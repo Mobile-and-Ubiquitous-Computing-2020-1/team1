@@ -29,3 +29,7 @@ Most of the code is borrowed from official example of object classification in t
 * To add other demo images, add original image in `res/drawable` and modify `res/values/spinner.xml` accordingly.
 * We use `tensorflow-lite:2.1.0` and `tensorflow-lite-gpu:2.1.0` at the moment, but it is possible to use legacy version.
 * If there are memory issues while building, modify `org.gradle.jvmargs` in `gradle.properties` file to fit your environment.
+
+## Screenshot
+
+![ui](https://raw.githubusercontent.com/Mobile-and-Ubiquitous-Computing-2020-1/team1/client_backbone/client/ui.jpg)
