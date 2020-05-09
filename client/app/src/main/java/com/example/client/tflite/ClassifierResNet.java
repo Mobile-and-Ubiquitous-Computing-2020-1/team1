@@ -16,7 +16,7 @@ public class ClassifierResNet extends Classifier {
      */
     private static final float PROBABILITY_MEAN = 0.0f;
 
-    private static final float PROBABILITY_STD = 1.0f;
+    private static final float PROBABILITY_STD = 10.0f;
 
     /**
      * Initializes a {@code ClassifierResNet}.
@@ -33,12 +33,12 @@ public class ClassifierResNet extends Classifier {
         // you can download this file from
         // see build.gradle for where to obtain this file. It should be auto
         // downloaded into assets.
-        return "efficientnet-lite0-fp32.tflite";
+        return "resnet_v2_101_299.tflite";
     }
 
     @Override
     protected String getLabelPath() {
-        return "labels_without_background.txt";
+        return "labels.txt";
     }
 
     @Override

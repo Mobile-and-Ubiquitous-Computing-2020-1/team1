@@ -6,8 +6,11 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -41,12 +44,29 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        Log.d(tag, "Connected");
         createClassifier(model, device, numThreads);
 
         /* Load image */
         imageView = (ImageView)findViewById(R.id.demo_image);
         image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
+
+        /* Load spinner */
+        Spinner spinner = (Spinner)findViewById(R.id.image_list);
+        final ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.demo_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(new Spinner.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                imageView.setImageResource(getResources().getIdentifier(adapter.getItem(pos).toString(), "drawable", getPackageName()));
+                image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         /* Load text for displaying result */
         textView = (TextView)findViewById(R.id.view_result);
@@ -64,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
     /* Inference */
     private void runInference() {
         Log.d(tag, "Inference button triggered");
+        textView.setText("Processing...");
         /* Reshaping image */
         Bitmap scaledImage = Bitmap.createScaledBitmap(image, imageSizeX, imageSizeY, false);
 
@@ -71,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
             final long startTime = SystemClock.uptimeMillis();
             final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-            textView.setText(String.format("Result: %s", results));
+            textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
         }
     }
 

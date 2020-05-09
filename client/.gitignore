@@ -101,4 +101,5 @@ lint/tmp/
 # lint/reports/
 
 # Tflite assets
-assets/
+*.ckpt
+*.tflite

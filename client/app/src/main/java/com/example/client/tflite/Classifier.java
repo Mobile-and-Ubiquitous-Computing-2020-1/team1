@@ -198,6 +198,7 @@ public abstract class Classifier {
         }
         tfliteOptions.setNumThreads(numThreads);
         tflite = new Interpreter(tfliteModel, tfliteOptions);
+        LOGGER.d("Interpreter initialized");
 
         // Loads labels out from the label file.
         labels = FileUtil.loadLabels(activity, getLabelPath());
