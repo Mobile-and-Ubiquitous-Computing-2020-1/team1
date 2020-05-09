@@ -11,8 +11,12 @@ android {
         versionCode 1
         versionName "1.0"
 
-        ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        aaptOptions {
+            noCompress "tflite"
+        }
+
+        dexOptions {
+            javaMaxHeapSize "4G"
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -27,12 +31,18 @@ android {
 
 }
 
+// Download default models; if you wish to use your own models then
+// place them in the "assets" directory and comment out this line.
+apply from:'download.gradle'
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    implementation 'org.tensorflow:tensorflow-lite:2.1.0'
+    implementation('org.tensorflow:tensorflow-lite:0.0.0-nightly') { changing = true }
+    implementation('org.tensorflow:tensorflow-lite-gpu:0.0.0-nightly') { changing = true }
+    implementation('org.tensorflow:tensorflow-lite-support:0.0.0-nightly') { changing = true }
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
