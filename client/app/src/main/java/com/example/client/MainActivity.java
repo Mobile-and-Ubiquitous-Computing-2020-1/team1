@@ -11,11 +11,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.example.client.tflite.Classifier;
 import com.example.client.tflite.Classifier.Device;
 import com.example.client.tflite.Classifier.Model;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -29,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
     private int numThreads = -1;
     private Classifier classifier;
 
-    //private Bitmap image;
+    private Bitmap image;
     private int imageSizeX;
     private int imageSizeY;
     private final int orientation = 0;
@@ -47,8 +45,8 @@ public class MainActivity extends AppCompatActivity {
         createClassifier(model, device, numThreads);
 
         /* Load image */
-        //imageView = (ImageView)findViewById(R.id.demo_image);
-        //image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
+        imageView = (ImageView)findViewById(R.id.demo_image);
+        image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
 
         /* Load text for displaying result */
         textView = (TextView)findViewById(R.id.view_result);
@@ -67,13 +65,13 @@ public class MainActivity extends AppCompatActivity {
     private void runInference() {
         Log.d(tag, "Inference button triggered");
         /* Reshaping image */
-        //Bitmap scaledImage = Bitmap.createScaledBitmap(image, imageSizeX, imageSizeY, false);
+        Bitmap scaledImage = Bitmap.createScaledBitmap(image, imageSizeX, imageSizeY, false);
 
         if (classifier != null) {
             final long startTime = SystemClock.uptimeMillis();
-            //final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation);
+            final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-            //textView.setText(String.format("Result: %s", results));
+            textView.setText(String.format("Result: %s", results));
         }
     }
 
