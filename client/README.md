@@ -2,14 +2,16 @@
 
 ## Prerequisite
 
-* `app/build.gradle:39`: `apply from: download.gradle` is commented out. Uncomment it for the first time you're running the code (to download pretrained model) and then comment it afterwards.
+- To Download model, goto server root (`$PROJECT_ROOT/server`) and run `./scripts/prepare_resnet50.sh`
+- After that, run `python convert_tflite.py` (also at ther server root). Then resnet50.tflite will be created in `app/src/main/assets`
+- To prepare empty intermediates file in android phone, run `./scripts/make_intermediates.sh` in server root
 
 ## Interface
 
-* Spinner: contains list of demo images
-* ImageView: displays selected image
-* Button: triggers inference
-* TextView: Displays result (possibly necessary log)
+- Spinner: contains list of demo images
+- ImageView: displays selected image
+- Button: triggers inference
+- TextView: Displays result (possibly necessary log)
 
 ## MainActivity
 
@@ -21,14 +23,14 @@
 
 Most of the code is borrowed from official example of object classification in tensorflow-lite examples repository [here](https://github.com/tensorflow/examples/tree/master/lite/examples/image_classification/android).
 
-* Class `Classifier` handles initialization, recognition, pre/postprocessing (and virtually everything)
-* Resnet-specific values are extended in `ClassifierResNet`
+- Class `Classifier` handles initialization, recognition, pre/postprocessing (and virtually everything)
+- Resnet-specific values are extended in `ClassifierResNet`
 
 ## Misc.
 
-* To add other demo images, add original image in `res/drawable` and modify `res/values/spinner.xml` accordingly.
-* We use `tensorflow-lite:2.1.0` and `tensorflow-lite-gpu:2.1.0` at the moment, but it is possible to use legacy version.
-* If there are memory issues while building, modify `org.gradle.jvmargs` in `gradle.properties` file to fit your environment.
+- To add other demo images, add original image in `res/drawable` and modify `res/values/spinner.xml` accordingly.
+- We use `tensorflow-lite:2.1.0` and `tensorflow-lite-gpu:2.1.0` at the moment, but it is possible to use legacy version.
+- If there are memory issues while building, modify `org.gradle.jvmargs` in `gradle.properties` file to fit your environment.
 
 ## Screenshot
 
