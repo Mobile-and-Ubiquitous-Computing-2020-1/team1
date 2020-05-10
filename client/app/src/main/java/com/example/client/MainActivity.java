@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static Context context;
 
-    private Model model = Model.RESNET;
+    private Model model = Model.FLOAT_MOBILENET;
     private Device device = Device.CPU;
     private int numThreads = -1;
     private Classifier classifier;

@@ -90,7 +90,7 @@ public abstract class Classifier {
     private final Interpreter.Options tfliteOptions = new Interpreter.Options();
 
     /** Labels corresponding to the output of the vision model. */
-    private List<String> labels;
+    protected List<String> labels;
 
     /** Input image TensorBuffer. */
     private TensorImage inputImageBuffer;
@@ -114,6 +114,8 @@ public abstract class Classifier {
             throws IOException {
         if (model == Model.RESNET) {
             return new ClassifierResNet(activity, device, numThreads);
+        } else if (model == Model.FLOAT_MOBILENET) {
+            return new ClassifierFloatMobileNet(activity, device, numThreads);
         } else {
             throw new UnsupportedOperationException();
         }
