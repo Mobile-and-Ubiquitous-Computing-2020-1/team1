@@ -6,12 +6,14 @@ of tensorflow-lite repository under the Apache License (v2.0).
 package com.example.client.tflite;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.SystemClock;
 import android.os.Trace;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.Buffer;
@@ -234,7 +236,7 @@ public abstract class Classifier {
     }
 
     /** Runs inference and returns the classification results. */
-    public List<Recognition> recognizeImage(final Bitmap bitmap, int sensorOrientation) {
+    public List<Recognition> recognizeImage(final Bitmap bitmap, int sensorOrientation, Context context) {
         // Logs this method so that it can be analyzed with systrace.
         Trace.beginSection("recognizeImage");
 
@@ -258,15 +260,31 @@ public abstract class Classifier {
         Trace.endSection();
         LOGGER.v("Timecost to run model inference: " + (endTimeForReference - startTimeForReference));
 
+        FileOutputStream fos = null;
         try {
-            // TODO: auto-create files
-            FileChannel fc = new FileOutputStream("/data/local/tmp/intermediates").getChannel();
+            fos = context.openFileOutput("intermediates", Context.MODE_APPEND);
+            FileChannel fc = fos.getChannel();
             outputBuffers[1].getBuffer().rewind();
             fc.write(outputBuffers[1].getBuffer());
             fc.close();
-        } catch (IOException e) {
+        } catch (FileNotFoundException e) {
+            LOGGER.v("failed to write ByteBuffer (FileNotFoundException) " + e);
             e.printStackTrace();
-            LOGGER.v("failed to write ByteBuffer");
+        } catch (IOException e ) {
+            LOGGER.v("failed to write ByteBuffer (IOException) " + e);
+            e.printStackTrace();
+        } catch (IndexOutOfBoundsException e) {
+            LOGGER.v("failed to write ByteBuffer (IndexOutOfBoundsException) " + e);
+            e.printStackTrace();
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    // this will not be catches (already check whetehr fos is null)
+                    e.printStackTrace();
+                }
+            }
         }
 
         // Gets the map of label and probability.

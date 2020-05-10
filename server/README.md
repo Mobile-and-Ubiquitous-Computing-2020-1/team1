@@ -10,7 +10,6 @@
 
 ## Read intermediates Tensor Example
 
-1. run `./scripts/make_intermediates.sh`
 2. At the application click `inference` button
 3. run `./scripts/get_intermediates.sh`
 4. run `python read_intermediate_tensor_test.py`
