@@ -11,10 +11,16 @@ import android.graphics.RectF;
 import android.os.SystemClock;
 import android.os.Trace;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -87,8 +93,8 @@ public abstract class Classifier {
     /** Input image TensorBuffer. */
     private TensorImage inputImageBuffer;
 
-    /** Output probability TensorBuffer. */
-    private final TensorBuffer outputProbabilityBuffer;
+    /** Output TensorBuffers */
+    private final TensorBuffer[] outputBuffers;
 
     /** Processer to apply post processing of the output probability. */
     private final TensorProcessor probabilityProcessor;
@@ -208,17 +214,18 @@ public abstract class Classifier {
         int[] imageShape = tflite.getInputTensor(imageTensorIndex).shape(); // {1, height, width, 3}
         imageSizeY = imageShape[1];
         imageSizeX = imageShape[2];
+
+        outputBuffers = new TensorBuffer[tflite.getOutputTensorCount()];
+        for (int outputIdx = 0; outputIdx < tflite.getOutputTensorCount(); outputIdx++) {
+            int[] outputShape = tflite.getOutputTensor(outputIdx).shape();
+            DataType outputDataType = tflite.getOutputTensor(outputIdx).dataType();
+            outputBuffers[outputIdx] =  TensorBuffer.createFixedSize(outputShape, outputDataType);
+        }
+
         DataType imageDataType = tflite.getInputTensor(imageTensorIndex).dataType();
-        int probabilityTensorIndex = 0;
-        int[] probabilityShape =
-                tflite.getOutputTensor(probabilityTensorIndex).shape(); // {1, NUM_CLASSES}
-        DataType probabilityDataType = tflite.getOutputTensor(probabilityTensorIndex).dataType();
 
         // Creates the input tensor.
         inputImageBuffer = new TensorImage(imageDataType);
-
-        // Creates the output tensor and its processor.
-        outputProbabilityBuffer = TensorBuffer.createFixedSize(probabilityShape, probabilityDataType);
 
         // Creates the post processor for the output probability.
         probabilityProcessor = new TensorProcessor.Builder().add(getPostprocessNormalizeOp()).build();
@@ -240,15 +247,31 @@ public abstract class Classifier {
 
         // Runs the inference call.
         Trace.beginSection("runInference");
+        Object[] inputs = {inputImageBuffer.getBuffer()};
+        Map<Integer, Object> outputs = new HashMap<Integer, Object>();
+        for (int i = 0; i < outputBuffers.length; i++) {
+            outputs.put(i, outputBuffers[i].getBuffer().rewind());
+        }
         long startTimeForReference = SystemClock.uptimeMillis();
-        tflite.run(inputImageBuffer.getBuffer(), outputProbabilityBuffer.getBuffer().rewind());
+        tflite.runForMultipleInputsOutputs(inputs, outputs);
         long endTimeForReference = SystemClock.uptimeMillis();
         Trace.endSection();
         LOGGER.v("Timecost to run model inference: " + (endTimeForReference - startTimeForReference));
 
+        try {
+            // TODO: auto-create files
+            FileChannel fc = new FileOutputStream("/data/local/tmp/intermediates").getChannel();
+            outputBuffers[1].getBuffer().rewind();
+            fc.write(outputBuffers[1].getBuffer());
+            fc.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            LOGGER.v("failed to write ByteBuffer");
+        }
+
         // Gets the map of label and probability.
         Map<String, Float> labeledProbability =
-                new TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
+                new TensorLabel(labels, probabilityProcessor.process(outputBuffers[0]))
                         .getMapWithFloatValue();
         Trace.endSection();
 
