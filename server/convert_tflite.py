@@ -35,28 +35,27 @@ def convert_mobilenet() -> None:
   # Create tf model
   model = mobilenet()
 
-  # Save tf model
-  SAVED_MODEL_DIR = '/tmp/mobilenet/'
-  tf.saved_model.save(model, SAVED_MODEL_DIR)
-
   # Convert to tflite
-  converter = tf.lite.TFLiteConverter.from_saved_model(SAVED_MODEL_DIR)
+  converter = tf.lite.TFLiteConverter.from_keras_model(model)
   tflite_model = converter.convert()
+
+  if not os.path.exists(TFLITE_MODEL_DIR):
+    os.mkdir(TFLITE_MODEL_DIR)
 
   # Save tflite model
   with open(os.path.join(TFLITE_MODEL_DIR, 'mobilenet_v1.tflite'), 'wb') as f:
     f.write(tflite_model)
 
 def main(args) -> None:
-    if args.model == 'all':
-        convert_resnet()
-        convert_mobilenet()
-    elif args.model == 'resnet50':
-        convert_resnet()
-    elif args.model == 'mobilenet':
-        convert_mobilenet()
-    else:
-        raise ValueError("Not supported model: {}".format(args.model))
+  if args.model == 'all':
+    convert_resnet()
+    convert_mobilenet()
+  elif args.model == 'resnet50':
+    convert_resnet()
+  elif args.model == 'mobilenet':
+    convert_mobilenet()
+  else:
+    raise ValueError("Not supported model: {}".format(args.model))
 
 if __name__ == "__main__":
   os.environ['CUDA_VISIBLE_DEVICES'] = ''
