@@ -23,14 +23,14 @@
 
 Most of the code is borrowed from official example of object classification in tensorflow-lite examples repository [here](https://github.com/tensorflow/examples/tree/master/lite/examples/image_classification/android).
 
-- Class `Classifier` handles initialization, recognition, pre/postprocessing (and virtually everything)
-- Resnet-specific values are extended in `ClassifierResNet`
+* Class `Classifier` handles initialization, recognition, pre/postprocessing (and virtually everything)
+* Resnet-specific values are extended in `ClassifierResNet`
 
 ## Misc.
 
-- To add other demo images, add original image in `res/drawable` and modify `res/values/spinner.xml` accordingly.
-- We use `tensorflow-lite:2.1.0` and `tensorflow-lite-gpu:2.1.0` at the moment, but it is possible to use legacy version.
-- If there are memory issues while building, modify `org.gradle.jvmargs` in `gradle.properties` file to fit your environment.
+* To add other demo images, add original image in `res/drawable` and modify `res/values/spinner.xml` accordingly.
+* We use `tensorflow-lite:2.1.0` and `tensorflow-lite-gpu:2.1.0` at the moment, but it is possible to use legacy version.
+* If there are memory issues while building, modify `org.gradle.jvmargs` in `gradle.properties` file to fit your environment.
 
 ## Screenshot
 
