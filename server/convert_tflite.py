@@ -1,3 +1,8 @@
+"""
+convert prepared resnet model into tflite model
+run this python script in server root
+"""
+
 import os
 
 import tensorflow as tf
@@ -7,7 +12,7 @@ from tensorflow import lite as tf_lite
 from models import resnet50
 
 CHECKPOINT_DIR = './checkpoints/resnet50'
-TFLITE_MODEL_DIR = './tflite-models'
+TFLITE_MODEL_DIR = '../client/app/src/main/assets'
 
 def main() -> None:
 
