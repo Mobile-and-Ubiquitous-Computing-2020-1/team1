@@ -5,10 +5,13 @@ import java.io.IOException;
 import org.tensorflow.lite.support.common.TensorOperator;
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 
-public class ClassifierResNet extends Classifier {
+/** This TensorFlowLite classifier works with the float MobileNet model. */
+public class ClassifierFloatMobileNet extends Classifier {
 
-    private static final float IMAGE_MEAN = 127.0f;
-    private static final float IMAGE_STD = 128.0f;
+    /** Float MobileNet requires additional normalization of the used input. */
+    private static final float IMAGE_MEAN = 127.5f;
+
+    private static final float IMAGE_STD = 127.5f;
 
     /**
      * Float model does not need dequantization in the post-processing. Setting mean and std as 0.0f
@@ -16,16 +19,17 @@ public class ClassifierResNet extends Classifier {
      */
     private static final float PROBABILITY_MEAN = 0.0f;
 
-    private static final float PROBABILITY_STD = 10.0f;
+    private static final float PROBABILITY_STD = 1.0f;
 
     /**
-     * Initializes a {@code ClassifierResNet}.
+     * Initializes a {@code ClassifierFloatMobileNet}.
      *
      * @param activity
      */
-    public ClassifierResNet(Activity activity, Device device, int numThreads)
+    public ClassifierFloatMobileNet(Activity activity, Device device, int numThreads)
             throws IOException {
         super(activity, device, numThreads);
+        labels = labels.subList(1, labels.size());
     }
 
     @Override
@@ -33,7 +37,7 @@ public class ClassifierResNet extends Classifier {
         // you can download this file from
         // see build.gradle for where to obtain this file. It should be auto
         // downloaded into assets.
-        return "resnet50.tflite";
+        return "mobilenet_v1.tflite";
     }
 
     @Override

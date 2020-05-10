@@ -1,5 +1,7 @@
 package com.example.client;
 
+import android.Manifest;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
@@ -25,7 +27,9 @@ public class MainActivity extends AppCompatActivity {
     /* Tag id for logging */
     protected final String tag = MainActivity.class.getSimpleName();
 
-    private Model model = Model.RESNET;
+    private static Context context;
+
+    private Model model = Model.FLOAT_MOBILENET;
     private Device device = Device.CPU;
     private int numThreads = -1;
     private Classifier classifier;
@@ -43,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        MainActivity.context = getApplicationContext();
         setContentView(R.layout.activity_main);
         Log.d(tag, "Connected");
         createClassifier(model, device, numThreads);
@@ -90,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (classifier != null) {
             final long startTime = SystemClock.uptimeMillis();
-            final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation);
+            final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
             textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
         }

@@ -2,14 +2,16 @@
 
 ## Prerequisite
 
-* `app/build.gradle:39`: `apply from: download.gradle` is commented out. Uncomment it for the first time you're running the code (to download pretrained model) and then comment it afterwards.
+- To Download model, goto server root (`$PROJECT_ROOT/server`) and run `./scripts/prepare_resnet50.sh`
+- After that, run `python convert_tflite.py` (also at ther server root). Then resnet50.tflite will be created in `app/src/main/assets`
+- To prepare empty intermediates file in android phone, run `./scripts/make_intermediates.sh` in server root
 
 ## Interface
 
-* Spinner: contains list of demo images
-* ImageView: displays selected image
-* Button: triggers inference
-* TextView: Displays result (possibly necessary log)
+- Spinner: contains list of demo images
+- ImageView: displays selected image
+- Button: triggers inference
+- TextView: Displays result (possibly necessary log)
 
 ## MainActivity
 
