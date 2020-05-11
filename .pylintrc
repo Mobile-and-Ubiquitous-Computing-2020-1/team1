@@ -1,5 +1,7 @@
 [MASTER]
 
+# pylint configuration copied from tensorflow/tensorflow
+
 # Specify a configuration file.
 #rcfile=
 
