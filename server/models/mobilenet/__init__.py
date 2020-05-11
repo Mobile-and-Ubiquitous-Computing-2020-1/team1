@@ -53,3 +53,4 @@ __version__ = '1.0.8'
 
 
 from .mobilenet import mobilenet
+from .mobilenet import mobilenet_thawed

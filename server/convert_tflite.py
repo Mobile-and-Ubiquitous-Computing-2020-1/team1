@@ -33,7 +33,10 @@ def convert_resnet() -> None:
 
 def convert_mobilenet() -> None:
   # Create tf model
+  CHECKPOINT_PATH = './checkpoints/mobilenet_v1_1.0_224/mobilenet_1_0_224_tf.h5'
+
   model = mobilenet()
+  model.load_weights(CHECKPOINT_PATH)
 
   # Convert to tflite
   converter = tf.lite.TFLiteConverter.from_keras_model(model)
