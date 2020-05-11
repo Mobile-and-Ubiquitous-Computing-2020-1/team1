@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # run it in $PROJECT_HOME/server
 
 if [ ! -d "checkpoints" ]
