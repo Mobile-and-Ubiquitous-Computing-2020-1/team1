@@ -4,7 +4,7 @@ import tensorflow as tf
 
 def main():
   target_dtype = tf.float32
-  shape_per_tensor = (28, 28, 256)  # test for mobilenet_v1
+  shape_per_tensor = (14, 14, 512)  # test for mobilenet_v1
   tensor_size = np.prod(shape_per_tensor)
   with open('./intermediate-features/intermediates', 'rb') as f:
     raw_bytes = f.read()
@@ -17,9 +17,11 @@ def main():
       tensors.append(tensor)
 
     tensor = tf.stack(tensors, axis=0)
-    print(tensor)
-    print(tensor.shape)
-    print(type(tensor))
+    print()
+    print('Finished reading tensor from intermediates')
+    print('Result Tensor Shape:', tensor.shape)
+    print('Result Tensor Type:', type(tensor))
+    print()
 
 if __name__ == "__main__":
   main()

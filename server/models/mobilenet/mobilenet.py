@@ -89,7 +89,10 @@ def mobilenet_thawed(input_shape,
                      alpha=1.0,
                      depth_multiplier=1,
                      dropout=1e-3,
-                     classes=1000):
+                     classes=1000,
+                     **kwargs):
+  global backend, layers, models, keras_utils
+  backend, layers, models, keras_utils = get_submodules_from_kwargs(kwargs)
   inputs = layers.Input(shape=input_shape)
 
   x = _depthwise_conv_block(inputs, 1024, alpha, depth_multiplier,
