@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 if [ ! -d "intermediate-features" ]
 then
   mkdir intermediate-features
