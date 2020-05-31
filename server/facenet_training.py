@@ -5,14 +5,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import glob
 import os
 
 from absl import app
 from absl import flags
 
 import tensorflow as tf
-from tensorflow.python.data import Dataset
 
 from models import InceptionResNetV1
 from utils.log import fedex_logger as logging
@@ -39,7 +37,7 @@ def main(args):
   train_dataset, test_dataset = create_data_pipeline(FLAGS.data_dir)
   model = InceptionResNetV1()
   img_size = (None, FLAGS.image_size, FLAGS.image_size, 3)
-  
+
   optimizer = tf.keras.optimizers.Adam(learning_rate=0.1,
                                        beta_1=0.9,
                                        beta_2=0.999,
