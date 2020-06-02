@@ -7,14 +7,19 @@ package com.example.client.tflite;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.SystemClock;
 import android.os.Trace;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -44,6 +49,9 @@ import org.tensorflow.lite.support.label.TensorLabel;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import com.example.client.tflite.env.Logger;
+
+import static android.content.Context.MODE_APPEND;
+import static android.content.Context.MODE_PRIVATE;
 
 /** A classifier specialized to label images using TensorFlow Lite. */
 public abstract class Classifier {
@@ -193,7 +201,7 @@ public abstract class Classifier {
 
     /** Initializes a {@code Classifier}. */
     protected Classifier(Activity activity, Device device, int numThreads) throws IOException {
-        tfliteModel = FileUtil.loadMappedFile(activity, getModelPath());
+        tfliteModel = getTfliteModel(activity);
         switch (device) {
             case NNAPI:
                 nnApiDelegate = new NnApiDelegate();
@@ -237,23 +245,6 @@ public abstract class Classifier {
         LOGGER.d("Created a Tensorflow Lite Image Classifier.");
     }
 
-    public void push_intermediate_feature() {
-        try {
-            String response = new PushFeatureTask().execute("http://147.46.219.198:40917/push/").get();
-            if (response != null) {
-                LOGGER.d("HTTP Response: " + response);
-                JSONObject json = new JSONObject(response);
-                LOGGER.d("success: " + json.getString("success"));
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
     /** Runs inference and returns the classification results. */
     public List<Recognition> recognizeImage(final Bitmap bitmap, int sensorOrientation, Context context) {
 
@@ -282,12 +273,11 @@ public abstract class Classifier {
 
         FileOutputStream fos = null;
         try {
-            fos = context.openFileOutput("intermediates", Context.MODE_APPEND);
+            fos = context.openFileOutput("intermediates", MODE_APPEND);
             FileChannel fc = fos.getChannel();
             outputBuffers[1].getBuffer().rewind();
             fc.write(outputBuffers[1].getBuffer());
             fc.close();
-            push_intermediate_feature();
         } catch (FileNotFoundException e) {
             LOGGER.v("failed to write ByteBuffer (FileNotFoundException) " + e);
             e.printStackTrace();
@@ -390,7 +380,7 @@ public abstract class Classifier {
     }
 
     /** Gets the name of the model file stored in Assets. */
-    protected abstract String getModelPath();
+    public abstract String getModelPath();
 
     /** Gets the name of the label file stored in Assets. */
     protected abstract String getLabelPath();
@@ -407,4 +397,27 @@ public abstract class Classifier {
      * 1.0f, respectively.
      */
     protected abstract TensorOperator getPostprocessNormalizeOp();
+
+    private MappedByteBuffer getTfliteModel(Activity activity) throws IOException {
+        try {
+            File modelFile = new File(activity.getFilesDir(), getModelPath());
+            if (!modelFile.exists()) {
+                FileOutputStream fos = activity.openFileOutput(getModelPath(), MODE_PRIVATE);
+                InputStream is = activity.getAssets().open(getModelPath());
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                }
+                fos.flush();
+                fos.close();
+                is.close();
+            }
+            FileInputStream is = activity.openFileInput(getModelPath());
+            return is.getChannel().map(FileChannel.MapMode.READ_ONLY, 0, modelFile.length());
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }
