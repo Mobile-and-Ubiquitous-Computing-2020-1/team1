@@ -12,12 +12,9 @@ import android.graphics.RectF;
 import android.os.SystemClock;
 import android.os.Trace;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -26,7 +23,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.ExecutionException;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.gpu.GpuDelegate;
@@ -237,8 +237,26 @@ public abstract class Classifier {
         LOGGER.d("Created a Tensorflow Lite Image Classifier.");
     }
 
+    public void push_intermediate_feature() {
+        try {
+            String response = new PushFeatureTask().execute("http://147.46.219.198:40917/push/").get();
+            if (response != null) {
+                LOGGER.d("HTTP Response: " + response);
+                JSONObject json = new JSONObject(response);
+                LOGGER.d("success: " + json.getString("success"));
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
     /** Runs inference and returns the classification results. */
     public List<Recognition> recognizeImage(final Bitmap bitmap, int sensorOrientation, Context context) {
+
         // Logs this method so that it can be analyzed with systrace.
         Trace.beginSection("recognizeImage");
 
@@ -269,6 +287,7 @@ public abstract class Classifier {
             outputBuffers[1].getBuffer().rewind();
             fc.write(outputBuffers[1].getBuffer());
             fc.close();
+            push_intermediate_feature();
         } catch (FileNotFoundException e) {
             LOGGER.v("failed to write ByteBuffer (FileNotFoundException) " + e);
             e.printStackTrace();
