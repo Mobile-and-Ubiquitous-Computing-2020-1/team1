@@ -1,6 +1,5 @@
 package com.example.client;
 
-import android.Manifest;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -16,11 +15,19 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.example.client.tflite.Classifier;
 import com.example.client.tflite.Classifier.Device;
 import com.example.client.tflite.Classifier.Model;
+import com.example.client.tflite.HttpTask;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -84,6 +91,24 @@ public class MainActivity extends AppCompatActivity {
                 runInference();
             }
         });
+
+        button = (Button) findViewById(R.id.pull_model_params);
+        button.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(tag, "Update button triggered");
+                pullUpdatedParams();
+                createClassifier(model, device, numThreads);
+            }
+        });
+        button = (Button) findViewById(R.id.push_features);
+        button.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(tag, "Push button triggered");
+                pushIntermediateFeature();
+            }
+        });
     }
 
     /* Inference */
@@ -117,5 +142,42 @@ public class MainActivity extends AppCompatActivity {
 
         imageSizeX = classifier.getImageSizeX();
         imageSizeY = classifier.getImageSizeY();
+    }
+
+    private void pullUpdatedParams() {
+        try {
+            String response = new HttpTask().execute("get").get();
+            if (response != null) {
+                classifier.close();
+                FileOutputStream fos = openFileOutput(classifier.getModelPath(), MODE_PRIVATE);
+                byte[] content = response.getBytes("ISO-8859-1");
+                fos.write(content);
+                fos.flush();
+                fos.close();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void pushIntermediateFeature() {
+        try {
+            String response = new HttpTask().execute("post").get();
+            if (response != null) {
+                Log.d(tag, "HTTP Response: " + response);
+                JSONObject json = new JSONObject(response);
+                Log.d(tag, "success: " + json.getString("success"));
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 }
