@@ -95,5 +95,4 @@ if __name__ == "__main__":
   parser.add_argument('--margin', type=int,
                       default=44)
 
-  args = parser.parse_args()
-  main(args)
+  main(parser.parse_args())

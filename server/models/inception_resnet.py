@@ -8,6 +8,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 import tensorflow as tf
 
 from tensorflow.python import keras
@@ -123,7 +125,7 @@ class Block17(keras.Model):
                                        padding='same',
                                        name='Conv2d_0c_7x1')
 
-    self.up_conv = BaseConvBlock(filters, (1, 1), name='Conv2d_1x1')
+    self.up_conv = layers.Conv2D(filters, (1, 1), name='Conv2d_1x1')
 
     self.scale = scale
     self.activation_fn = activation_fn
@@ -165,7 +167,7 @@ class Block8(keras.Model):
                                        padding='same',
                                        name='Conv2d_0c_3x1')
 
-    self.up_conv = BaseConvBlock(filters, (1, 1), name='Conv2d_1x1')
+    self.up_conv = layers.Conv2D(filters, (1, 1), name='Conv2d_1x1')
 
     self.scale = scale
     self.activation_fn = activation_fn
@@ -324,11 +326,22 @@ class InceptionResNetV1(keras.Model):
     self.flatten = layers.Flatten()
     self.dropout = layers.Dropout(1 - dropout_keep_prob)
 
-    self.fc = layers.Dense(bottleneck_layer_size, use_bias=False)
-    self.fc_norm = layers.BatchNormalization(axis=-1,
-                                             momentum=0.995,
-                                             epsilon=0.001)
-    self.classifier = layers.Dense(num_classes)
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck')
+    # pylint: disable=line-too-long
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(0.0),
+                                   name='Logits')
+    self.center_var = tf.Variable(np.zeros(shape=(num_classes, 128)),
+                                  dtype=tf.float32, trainable=False)
+
+  def calculate_center_loss(self, features, labels):
+    labels = tf.reshape(labels, [-1])
+    centers_batch = tf.gather(self.center_var, labels)
+    diff = (1 - 0.95) * (centers_batch - features)
+    with tf.control_dependencies([self.center_var.scatter_nd_sub(labels, diff)]):
+      loss = tf.reduce_mean(tf.square(features - centers_batch))
+    return loss
 
   def call(self, x, training=False):
     x = self.conv1(x, training=training)
@@ -349,7 +362,8 @@ class InceptionResNetV1(keras.Model):
     x = self.avg_pool(x)
     x = self.flatten(x)
     x = self.dropout(x, training=training)
-    x = self.fc(x)
-    x = self.fc_norm(x)
-    x = self.classifier(x)
-    return x
+    prelogits = self.embedding(x)
+    embeddings = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    embeddings = embeddings * 10.
+    x = self.classifier(prelogits)
+    return x, embeddings
