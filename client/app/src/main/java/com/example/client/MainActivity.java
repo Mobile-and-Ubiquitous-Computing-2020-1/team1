@@ -2,6 +2,8 @@ package com.example.client;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
@@ -42,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView imageView;
     private TextView textView;
-    private Button button;
+    private Button button, go_back;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,28 +52,16 @@ public class MainActivity extends AppCompatActivity {
         MainActivity.context = getApplicationContext();
         setContentView(R.layout.activity_main);
         Log.d(tag, "Connected");
+
+        Intent intent = getIntent();
+        Integer image_id = intent.getIntExtra("position", R.drawable.demo01);
+
         createClassifier(model, device, numThreads);
 
         /* Load image */
         imageView = (ImageView)findViewById(R.id.demo_image);
+        imageView.setImageResource(image_id);
         image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
-
-        /* Load spinner */
-        Spinner spinner = (Spinner)findViewById(R.id.image_list);
-        final ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
-                R.array.demo_array, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setOnItemSelectedListener(new Spinner.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                imageView.setImageResource(getResources().getIdentifier(adapter.getItem(pos).toString(), "drawable", getPackageName()));
-                image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
 
         /* Load text for displaying result */
         textView = (TextView)findViewById(R.id.view_result);
@@ -84,6 +74,15 @@ public class MainActivity extends AppCompatActivity {
                 runInference();
             }
         });
+
+        go_back = (Button)findViewById(R.id.go_back);
+        go_back.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+
     }
 
     /* Inference */
@@ -112,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(tag, "Creating classifier");
             classifier = Classifier.create(this, model, device, numThreads);
         } catch (IOException e) {
-            Log.e(tag, "Failed to create classifier.");
+            Log.e(tag, Log.getStackTraceString(e));
         }
 
         imageSizeX = classifier.getImageSizeX();
