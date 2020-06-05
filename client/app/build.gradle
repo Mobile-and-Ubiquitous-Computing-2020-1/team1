@@ -32,6 +32,8 @@ android {
         }
     }
 
+    useLibrary 'org.apache.http.legacy'
+
 }
 
 // Download default models; if you wish to use your own models then
