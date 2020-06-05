@@ -2,21 +2,27 @@ package com.example.client;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.PopupWindow;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.client.tflite.Classifier;
 import com.example.client.tflite.Classifier.Device;
@@ -44,7 +50,10 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView imageView;
     private TextView textView;
-    private Button button, go_back;
+    private Button button, go_back, correct, wrong;
+    private EditText userInput;
+    private AlertDialog.Builder builder;
+    private String feedbackInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        /* Button for going back to imagelist */
         go_back = (Button)findViewById(R.id.go_back);
         go_back.setOnClickListener(new Button.OnClickListener() {
             @Override
@@ -83,6 +93,48 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        /* Interface for user feedback */
+        correct = (Button)findViewById(R.id.res_correct);
+        wrong = (Button)findViewById(R.id.res_wrong);
+        correct.setVisibility(View.GONE);
+        wrong.setVisibility(View.GONE);
+        correct.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast toast = Toast.makeText(getApplicationContext(), "Success :)", Toast.LENGTH_SHORT);
+                toast.show();
+                finish();
+            }
+        });
+        wrong.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                builder.show();
+            }
+        });
+
+        /* Popup dialog for user feedback*/
+        builder = new AlertDialog.Builder(this);
+        builder.setTitle("Feedback");
+        userInput = new EditText(this);
+        userInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(userInput);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                feedbackInput = userInput.getText().toString();
+                Toast toast = Toast.makeText(getApplicationContext(), "Thanks for your feedback :)", Toast.LENGTH_SHORT);
+                Log.d(tag, String.format("Correct output: %s", feedbackInput));
+                toast.show();
+                finish();
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
     }
 
     /* Inference */
@@ -98,6 +150,9 @@ public class MainActivity extends AppCompatActivity {
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
             textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
         }
+
+        correct.setVisibility(View.VISIBLE);
+        wrong.setVisibility(View.VISIBLE);
     }
 
     /* Initializing Classifier */

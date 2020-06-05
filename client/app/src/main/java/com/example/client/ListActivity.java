@@ -69,7 +69,7 @@ public class ListActivity extends AppCompatActivity {
             public void onItemClick(int position, View v) {
                 Intent intent = new Intent(ListActivity.this, MainActivity.class);
                 intent.putExtra("position", image_ids[position]);
-                Log.d(tag, String.format("You have clicked %d",position));
+                Log.d(tag, String.format("You have clicked %d", position));
                 startActivity(intent);
             }
         });

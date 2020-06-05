@@ -13,11 +13,11 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="(Result)"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/run_inference"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.838" />
+        app:layout_constraintVertical_bias="1.0" />
 
     <Button
         android:id="@+id/run_inference"
@@ -25,11 +25,10 @@
         android:layout_height="wrap_content"
         android:text="Inference"
         app:layout_constraintBottom_toTopOf="@+id/view_result"
-        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.682" />
+        app:layout_constraintTop_toBottomOf="@+id/demo_image"
+        app:layout_constraintVertical_bias="0.926" />
 
     <Button
         android:id="@+id/go_back"
@@ -49,11 +48,34 @@
         android:layout_height="wrap_content"
         android:src="@drawable/demo01"
         app:layout_constraintBottom_toTopOf="@+id/run_inference"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.652" />
+        app:layout_constraintTop_toBottomOf="@+id/go_back"
+        app:layout_constraintVertical_bias="0.268" />
+
+    <Button
+        android:id="@+id/res_correct"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="O"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="0.288"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/view_result"
+        app:layout_constraintVertical_bias="0.401" />
+
+    <Button
+        android:id="@+id/res_wrong"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="X"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="0.712"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/view_result"
+        app:layout_constraintVertical_bias="0.401" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
