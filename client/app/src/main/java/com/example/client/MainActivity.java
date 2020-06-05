@@ -1,10 +1,8 @@
 package com.example.client;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
@@ -12,13 +10,9 @@ import android.os.SystemClock;
 import android.text.InputType;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.PopupWindow;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -101,9 +95,8 @@ public class MainActivity extends AppCompatActivity {
         correct.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(tag, String.format("Correct output: %s", feedbackInput));
                 /* TODO: Submit current label with intermediate tensor (feedbackInput) */
-                Toast toast = Toast.makeText(getApplicationContext(), "Success :)", Toast.LENGTH_SHORT);
+                Toast toast = Toast.makeText(getApplicationContext(), String.format("(%s) Success :)", feedbackInput), Toast.LENGTH_SHORT);
                 toast.show();
                 finish();
             }
@@ -126,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 feedbackInput = userInput.getText().toString();
                 /* TODO: Submit corrected label with intermediate tensor (feedbackInput) */
-                Toast toast = Toast.makeText(getApplicationContext(), "Thanks for your feedback :)", Toast.LENGTH_SHORT);
+                Toast toast = Toast.makeText(getApplicationContext(), String.format("(%s) Thanks for your feedback :)", feedbackInput), Toast.LENGTH_SHORT);
                 Log.d(tag, String.format("Correct output: %s", feedbackInput));
                 toast.show();
                 finish();
@@ -152,8 +145,7 @@ public class MainActivity extends AppCompatActivity {
             final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
             textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
-            feedbackInput = String.format("%s", results.get(0)).split("\\[", 0)[0];
-            feedbackInput = feedbackInput.substring(0,feedbackInput.length()-1);
+            feedbackInput = String.format("%s", results.get(0)).split("\\(", 0)[0].trim();
         }
         correct.setVisibility(View.VISIBLE);
         wrong.setVisibility(View.VISIBLE);
