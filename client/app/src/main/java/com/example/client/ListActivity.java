@@ -5,12 +5,26 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.client.tflite.Classifier;
+import com.example.client.tflite.Classifier.Device;
+import com.example.client.tflite.Classifier.Model;
+import com.example.client.tflite.HttpTask;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
 
 public class ListActivity extends AppCompatActivity {
@@ -18,7 +32,16 @@ public class ListActivity extends AppCompatActivity {
     protected final String tag = ListActivity.class.getSimpleName();
     private static Context context;
 
+    private Model model = Model.FLOAT_MOBILENET;
+    private Device device = Device.CPU;
+    private int numThreads = -1;
+    private int imageSizeX;
+    private int imageSizeY;
+
+    public static Classifier classifier;
+
     private RecyclerView recyclerView;
+    private Button pull_button, push_button;
 
     public ArrayList<ImageItem> createLists;
 
@@ -51,6 +74,8 @@ public class ListActivity extends AppCompatActivity {
         setContentView(R.layout.activity_list);
         Log.d(tag, "Connected");
 
+        createClassifier(model, device, numThreads);
+
         recyclerView = (RecyclerView)findViewById(R.id.imagegallery);
         recyclerView.setHasFixedSize(true);
 
@@ -65,8 +90,28 @@ public class ListActivity extends AppCompatActivity {
             public void onItemClick(int position, View v) {
                 Intent intent = new Intent(ListActivity.this, MainActivity.class);
                 intent.putExtra("position", image_ids[position]);
+                intent.putExtra("imageSizeX", imageSizeX);
+                intent.putExtra("imageSizeY", imageSizeY);
                 Log.d(tag, String.format("You have clicked %d", position));
                 startActivity(intent);
+            }
+        });
+
+        /* Pull & push */
+        pull_button = (Button) findViewById(R.id.pull_model_params);
+        pull_button.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(tag, "Update button triggered");
+                pullUpdatedParams();
+            }
+        });
+        push_button = (Button) findViewById(R.id.push_features);
+        push_button.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(tag, "Push button triggered");
+                pushIntermediateFeature();
             }
         });
     }
@@ -80,5 +125,73 @@ public class ListActivity extends AppCompatActivity {
             imlist.add(imageitem);
         }
         return imlist;
+    }
+
+    /* Initializing Classifier */
+    private void createClassifier(Model model, Device device, int numThreads) {
+        if (classifier != null) {
+            Log.d(tag, "Closing classifier");
+            classifier.close();
+            classifier = null;
+        }
+        try {
+            Log.d(tag, "Creating classifier");
+            classifier = Classifier.create(this, model, device, numThreads);
+        } catch (IOException e) {
+            Log.e(tag, Log.getStackTraceString(e));
+        }
+
+        imageSizeX = classifier.getImageSizeX();
+        imageSizeY = classifier.getImageSizeY();
+    }
+
+    private void pullUpdatedParams() {
+        try {
+            String response = new HttpTask().execute("get").get();
+            if (response != null) {
+                classifier.close();
+                FileOutputStream fos = openFileOutput(classifier.getModelPath(), MODE_PRIVATE);
+                byte[] content = response.getBytes("ISO-8859-1");
+                fos.write(content);
+                fos.flush();
+                fos.close();
+                createClassifier(model, device, numThreads);
+                Toast toast;
+                toast = Toast.makeText(getApplicationContext(), "New model is Updated!", Toast.LENGTH_SHORT);
+                toast.show();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void pushIntermediateFeature() {
+        try {
+            File files_dir = getFilesDir();
+            for (String filename: files_dir.list()) {
+                if (filename.startsWith("intermediates") || filename.startsWith("label")) {
+                    File file = new File(files_dir, filename);
+                    String response = new HttpTask().execute("post", file.getAbsolutePath()).get();
+                    if (response != null) {
+                        Log.d(tag, "HTTP Response: " + response);
+                        JSONObject json = new JSONObject(response);
+                        Log.d(tag, "success: " + json.getString("success"));
+                    }
+                }
+            }
+            Toast toast;
+            toast = Toast.makeText(getApplicationContext(), "Successfully sent your feedback!", Toast.LENGTH_SHORT);
+            toast.show();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 }
