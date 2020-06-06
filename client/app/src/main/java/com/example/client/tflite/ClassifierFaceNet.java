@@ -29,7 +29,6 @@ public class ClassifierFaceNet extends Classifier {
     public ClassifierFaceNet(Activity activity, Device device, int numThreads)
             throws IOException {
         super(activity, device, numThreads);
-        labels = labels.subList(1, labels.size());
     }
 
     @Override

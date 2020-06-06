@@ -24,14 +24,15 @@ public class ListActivity extends AppCompatActivity {
 
     /* Variables for image grid */
     private String image_titles[] = {
-            "I1", "I2", "I3", "I4", "I5", "I6", "I7", "I8", "I9", "I10",
+            "I1", "I2", "I3", "I4", "I5", "I6", "I7", "I8", "I9", "I10", "I11", "I12", "I13", "I14"
     };
 
     private Integer image_ids[] = {
             R.drawable.demo01, R.drawable.demo02, R.drawable.demo03,
             R.drawable.demo04, R.drawable.demo05, R.drawable.demo06,
             R.drawable.demo07, R.drawable.demo08, R.drawable.demo09,
-            R.drawable.demo10,
+            R.drawable.demo10, R.drawable.demo11, R.drawable.demo12,
+            R.drawable.demo13, R.drawable.demo14
     };
 
     public class ImageItem {

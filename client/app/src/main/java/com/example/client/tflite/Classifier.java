@@ -218,6 +218,8 @@ public abstract class Classifier {
         // Loads labels out from the label file.
         labels = FileUtil.loadLabels(activity, getLabelPath());
         LOGGER.d("num labels " + labels.size());
+        LOGGER.d("first label " + labels.get(0));
+        LOGGER.d("last label " + labels.get(labels.size() - 1));
 
         // Reads type and shape of input and output tensors, respectively.
         int imageTensorIndex = 0;
@@ -315,6 +317,8 @@ public abstract class Classifier {
 
         float[] probs = outputBuffers[0].getFloatArray();
         int idx = argmax(probs);
+
+        LOGGER.d("argmax idx " + idx + " " + labels.get(idx));
         return labels.get(idx);
     }
 
