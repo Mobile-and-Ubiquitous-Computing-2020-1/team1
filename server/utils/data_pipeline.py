@@ -24,9 +24,12 @@ def create_data_pipeline(data_dir,
 
   logging.debug('creating data pipeline, num classes %d', len(classes))
 
-  class2labels = {c.split('/')[-1]: i for i, c in enumerate(classes)}
+  shorten_classes = list(map(lambda x: x.split('/')[-1], classes))
+  class2labels = {c: i for i, c in enumerate(
+      sorted(shorten_classes, key=lambda x: int(x[1:])))}
   num_classes = len(classes)
-  num_images = 0
+  num_train = 0
+  num_test = 0
 
   train_datas = []
   train_labels = []
@@ -37,12 +40,13 @@ def create_data_pipeline(data_dir,
   for folder in classes:
     class_name = folder.split('/')[-1]
     all_images = glob.glob(os.path.join(folder, '*.jpg'))
-    num_images += len(all_images)
 
     split_idx = int(len(all_images) * train_ratio)
 
     train_data = all_images[:split_idx]
     test_data = all_images[split_idx:]
+    num_train += len(train_data)
+    num_test += len(test_data)
     train_datas.extend(train_data)
     train_labels.extend([class2labels[class_name]] * len(train_data))
     test_datas.extend(test_data)
@@ -52,7 +56,8 @@ def create_data_pipeline(data_dir,
     def make_img_tensor(filename):
       file_contents = tf.io.read_file(filename)
       image = tf.image.decode_image(file_contents, 3)
-      image = tf.image.random_flip_left_right(image)
+      if is_training:
+        image = tf.image.random_flip_left_right(image)
       image = tf.image.resize_with_crop_or_pad(image, img_size, img_size)
       image = (tf.cast(image, tf.float32) - 127.5) / 128.0
       return image
@@ -61,7 +66,7 @@ def create_data_pipeline(data_dir,
         lambda filename, label: (make_img_tensor(filename), label))
 
     if is_training:
-      dataset = dataset.shuffle(num_classes)
+      dataset = dataset.shuffle(num_classes * 2)
 
     dataset = dataset.batch(batch_size)
     return dataset
@@ -71,4 +76,4 @@ def create_data_pipeline(data_dir,
 
   train_dataset = process_dataset(train_dataset, True)
   test_dataset = process_dataset(test_dataset, False)
-  return train_dataset, test_dataset, num_classes, num_images
+  return train_dataset, test_dataset, num_classes, num_train, num_test

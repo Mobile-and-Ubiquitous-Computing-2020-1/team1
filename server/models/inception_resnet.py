@@ -17,6 +17,30 @@ from tensorflow.python.keras import layers
 from tensorflow.python.keras import initializers
 from tensorflow.python.keras import regularizers
 
+class CenterLoss(layers.Layer):
+  """center loss calculation (this is stateful)"""
+  def __init__(self, num_classes, embed_dim=512):
+    super(CenterLoss, self).__init__()
+    self.num_classes = num_classes
+    self.embed_dim = embed_dim
+
+  def build(self, input_shape):
+    self.center_var = self.add_weight('center_var',
+                                      shape=(self.num_classes, self.embed_dim),
+                                      dtype=tf.float32,
+                                      initializer=initializers.zeros,
+                                      trainable=False)
+    self.built = True
+
+  def call(self, features, labels):
+    labels = tf.reshape(labels, [-1])
+    centers_batch = tf.gather(self.center_var, labels)
+    diff = (1 - 0.95) * (centers_batch - features)
+    with tf.control_dependencies(
+        [self.center_var.scatter_nd_sub(labels, diff)]):
+      loss = tf.reduce_mean(tf.square(features - centers_batch))
+      return loss
+
 class BaseConvBlock(keras.Model):
   """Base Convolution Module"""
   def __init__(self,
@@ -38,6 +62,7 @@ class BaseConvBlock(keras.Model):
                               kernel_initializer=kernel_initializer,
                               kernel_regularizer=regularizers.l2(weight_decay) \
                               if weight_decay > 0 else None,
+                              use_bias=False,
                               name=name)
     self.norm = layers.BatchNormalization(axis=-1,
                                           momentum=batch_norm_decay,
@@ -282,7 +307,7 @@ class ReductionB(keras.Model):
 class InceptionResNetV1(keras.Model):
   def __init__(self,
                dropout_keep_prob=0.8,
-               bottleneck_layer_size=128,
+               bottleneck_layer_size=512,
                num_classes=8631):
     super(InceptionResNetV1, self).__init__()
 
@@ -326,22 +351,29 @@ class InceptionResNetV1(keras.Model):
     self.flatten = layers.Flatten()
     self.dropout = layers.Dropout(1 - dropout_keep_prob)
 
-    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck')
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck',
+                                  use_bias=False)
+    self.last_bn = layers.BatchNormalization()
     # pylint: disable=line-too-long
     self.classifier = layers.Dense(num_classes,
                                    kernel_initializer=initializers.glorot_uniform,
                                    kernel_regularizer=regularizers.l2(0.0),
                                    name='Logits')
-    self.center_var = tf.Variable(np.zeros(shape=(num_classes, 128)),
-                                  dtype=tf.float32, trainable=False)
+    self.activation = layers.Activation('softmax')
+    self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    self.center_loss.build(input_shape)
+    super(InceptionResNetV1, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
 
   def calculate_center_loss(self, features, labels):
-    labels = tf.reshape(labels, [-1])
-    centers_batch = tf.gather(self.center_var, labels)
-    diff = (1 - 0.95) * (centers_batch - features)
-    with tf.control_dependencies([self.center_var.scatter_nd_sub(labels, diff)]):
-      loss = tf.reduce_mean(tf.square(features - centers_batch))
-    return loss
+    return self.center_loss(features, labels)
 
   def call(self, x, training=False):
     x = self.conv1(x, training=training)
@@ -363,7 +395,8 @@ class InceptionResNetV1(keras.Model):
     x = self.flatten(x)
     x = self.dropout(x, training=training)
     prelogits = self.embedding(x)
-    embeddings = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
-    embeddings = embeddings * 10.
-    x = self.classifier(prelogits)
-    return x, embeddings
+    prelogits = self.last_bn(prelogits)
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
