@@ -92,7 +92,7 @@ public abstract class Classifier {
     private final Interpreter.Options tfliteOptions = new Interpreter.Options();
 
     /** Labels corresponding to the output of the vision model. */
-    protected List<String> labels;
+    public List<String> labels;
 
     /** Input image TensorBuffer. */
     private TensorImage inputImageBuffer;

@@ -26,7 +26,8 @@ public class HttpTask extends AsyncTask<String, Void, String> {
         if (method.equals("get")) {
             return pull();
         } else if (method.equals("post")) {
-            return push();
+            String filePathpath = params[1];
+            return push(filePathpath);
         } else {
             return null;
         }
@@ -49,13 +50,13 @@ public class HttpTask extends AsyncTask<String, Void, String> {
         }
     }
 
-    private String push() {
+    private String push(String filePath) {
         try {
             AndroidHttpClient http = AndroidHttpClient.newInstance("MyApp");
             HttpPost method = new HttpPost(BASE_URL + "push/");
-            String FILES_DIR = "/data/user/0/com.example.client/files";
-            File file = new File(FILES_DIR + "/intermediates");
-            method.setEntity(new FileEntity(file, "application/octet-stream"));
+            File file = new File(filePath);
+            method.setEntity(new FileEntity(file, "application/octet-stream;"));
+            method.setHeader("Content-Disposition", String.format("form-data; filename=\"%s\"", file.getName()));
             HttpResponse response = http.execute(method);
             HttpEntity entity = response.getEntity();
             String s = EntityUtils.toString(entity);
