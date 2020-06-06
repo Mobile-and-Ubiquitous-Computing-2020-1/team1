@@ -43,7 +43,7 @@ def _make_dataset(input_dir, output_dir, image_size, margin, split='train'):
     target_files = glob.glob(os.path.join(class_folder, '*'))
     logger.debug('processing %s...', class_folder)
     for file in target_files:
-      img = cv2.cvtColor(cv2.imread(file), cv2.COLOR_BGR2RGB)
+      img = cv2.imread(file)
       detect_result = detector.detect_faces(img)
 
       if not detect_result:
