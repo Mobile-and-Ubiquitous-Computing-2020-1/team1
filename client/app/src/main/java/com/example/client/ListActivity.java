@@ -32,7 +32,7 @@ public class ListActivity extends AppCompatActivity {
     protected final String tag = ListActivity.class.getSimpleName();
     private static Context context;
 
-    private Model model = Model.FLOAT_MOBILENET;
+    private Model model = Model.FACENET;
     private Device device = Device.CPU;
     private int numThreads = -1;
     private int imageSizeX;
