@@ -1,19 +1,22 @@
 package com.example.client;
 
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.client.tflite.Classifier;
@@ -49,7 +52,10 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView imageView;
     private TextView textView;
-    private Button button;
+    private Button button, go_back, correct, wrong;
+    private EditText userInput;
+    private AlertDialog.Builder builder;
+    private String feedbackInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,28 +63,16 @@ public class MainActivity extends AppCompatActivity {
         MainActivity.context = getApplicationContext();
         setContentView(R.layout.activity_main);
         Log.d(tag, "Connected");
+
+        Intent intent = getIntent();
+        Integer image_id = intent.getIntExtra("position", R.drawable.demo01);
+
         createClassifier(model, device, numThreads);
 
         /* Load image */
         imageView = (ImageView)findViewById(R.id.demo_image);
+        imageView.setImageResource(image_id);
         image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
-
-        /* Load spinner */
-        Spinner spinner = (Spinner)findViewById(R.id.image_list);
-        final ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
-                R.array.demo_array, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setOnItemSelectedListener(new Spinner.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-                imageView.setImageResource(getResources().getIdentifier(adapter.getItem(pos).toString(), "drawable", getPackageName()));
-                image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
 
         /* Load text for displaying result */
         textView = (TextView)findViewById(R.id.view_result);
@@ -92,6 +86,61 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        /* Button for going back to imagelist */
+        go_back = (Button)findViewById(R.id.go_back);
+        go_back.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+
+        /* Interface for user feedback */
+        correct = (Button)findViewById(R.id.res_correct);
+        wrong = (Button)findViewById(R.id.res_wrong);
+        correct.setVisibility(View.GONE);
+        wrong.setVisibility(View.GONE);
+        correct.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                /* TODO: Submit current label with intermediate tensor (feedbackInput) */
+                Toast toast = Toast.makeText(getApplicationContext(), String.format("(%s) Success :)", feedbackInput), Toast.LENGTH_SHORT);
+                toast.show();
+                finish();
+            }
+        });
+        wrong.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                builder.show();
+            }
+        });
+
+        /* Popup dialog for user feedback*/
+        builder = new AlertDialog.Builder(this);
+        builder.setTitle("Feedback");
+        userInput = new EditText(this);
+        userInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(userInput);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                feedbackInput = userInput.getText().toString();
+                /* TODO: Submit corrected label with intermediate tensor (feedbackInput) */
+                Toast toast = Toast.makeText(getApplicationContext(), String.format("(%s) Thanks for your feedback :)", feedbackInput), Toast.LENGTH_SHORT);
+                Log.d(tag, String.format("Correct output: %s", feedbackInput));
+                toast.show();
+                finish();
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+ 
+        /* Pull & push */
         button = (Button) findViewById(R.id.pull_model_params);
         button.setOnClickListener(new Button.OnClickListener() {
             @Override
@@ -123,7 +172,10 @@ public class MainActivity extends AppCompatActivity {
             final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
             textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
+            feedbackInput = String.format("%s", results.get(0)).split("\\(", 0)[0].trim();
         }
+        correct.setVisibility(View.VISIBLE);
+        wrong.setVisibility(View.VISIBLE);
     }
 
     /* Initializing Classifier */
@@ -137,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(tag, "Creating classifier");
             classifier = Classifier.create(this, model, device, numThreads);
         } catch (IOException e) {
-            Log.e(tag, "Failed to create classifier.");
+            Log.e(tag, Log.getStackTraceString(e));
         }
 
         imageSizeX = classifier.getImageSizeX();

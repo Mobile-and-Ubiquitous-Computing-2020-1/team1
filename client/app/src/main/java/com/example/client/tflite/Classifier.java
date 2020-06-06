@@ -174,10 +174,11 @@ public abstract class Classifier {
         @Override
         public String toString() {
             String resultString = "";
+            /*
             if (id != null) {
                 resultString += "[" + id + "] ";
             }
-
+            */
             if (title != null) {
                 resultString += title + " ";
             }
