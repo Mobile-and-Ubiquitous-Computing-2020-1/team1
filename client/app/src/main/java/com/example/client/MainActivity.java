@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static Context context;
 
-    private Model model = Model.FLOAT_MOBILENET;
+    private Model model = Model.FACENET;
     private Device device = Device.CPU;
     private int numThreads = -1;
     private Classifier classifier;
@@ -169,10 +169,10 @@ public class MainActivity extends AppCompatActivity {
 
         if (classifier != null) {
             final long startTime = SystemClock.uptimeMillis();
-            final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
+            final String result = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-            textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
-            feedbackInput = String.format("%s", results.get(0)).split("\\(", 0)[0].trim();
+            textView.setText(String.format("%s", result));
+            feedbackInput = String.format("%s", result);
         }
         correct.setVisibility(View.VISIBLE);
         wrong.setVisibility(View.VISIBLE);
