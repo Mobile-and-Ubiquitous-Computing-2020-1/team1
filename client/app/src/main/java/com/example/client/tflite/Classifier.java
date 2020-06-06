@@ -92,7 +92,7 @@ public abstract class Classifier {
     private final Interpreter.Options tfliteOptions = new Interpreter.Options();
 
     /** Labels corresponding to the output of the vision model. */
-    protected List<String> labels;
+    public List<String> labels;
 
     /** Input image TensorBuffer. */
     private TensorImage inputImageBuffer;
@@ -287,11 +287,15 @@ public abstract class Classifier {
 
         FileOutputStream fos = null;
         try {
-            fos = context.openFileOutput("intermediates", MODE_APPEND);
-            FileChannel fc = fos.getChannel();
-            outputBuffers[1].getBuffer().rewind();
-            fc.write(outputBuffers[1].getBuffer());
-            fc.close();
+            String filename = "intermediates_" + imageId;
+            File file = new File(context.getFilesDir(), filename);
+            if (!file.exists()) {
+                fos = context.openFileOutput(filename, MODE_PRIVATE);
+                FileChannel fc = fos.getChannel();
+                outputBuffers[1].getBuffer().rewind();
+                fc.write(outputBuffers[1].getBuffer());
+                fc.close();
+            }
         } catch (FileNotFoundException e) {
             LOGGER.v("failed to write ByteBuffer (FileNotFoundException) " + e);
             e.printStackTrace();
