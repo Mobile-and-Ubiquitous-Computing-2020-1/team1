@@ -395,7 +395,7 @@ class InceptionResNetV1(keras.Model):
     x = self.flatten(x)
     x = self.dropout(x, training=training)
     prelogits = self.embedding(x)
-    prelogits = self.last_bn(prelogits)
+    prelogits = self.last_bn(prelogits, training=training)
     x = self.calculate_embedding(prelogits)
     x = self.classifier(x)
     x = self.activation(x)
