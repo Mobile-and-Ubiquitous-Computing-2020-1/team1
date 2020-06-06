@@ -27,8 +27,11 @@ import com.example.client.tflite.HttpTask;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -45,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private Classifier classifier;
 
     private Bitmap image;
+    private Integer imageId;
     private int imageSizeX;
     private int imageSizeY;
     private final int orientation = 0;
@@ -56,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText userInput;
     private AlertDialog.Builder builder;
     private String feedbackInput;
+    private int labelIndex;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,13 +70,13 @@ public class MainActivity extends AppCompatActivity {
         Log.d(tag, "Connected");
 
         Intent intent = getIntent();
-        Integer image_id = intent.getIntExtra("position", R.drawable.demo01);
+        imageId = intent.getIntExtra("position", R.drawable.demo01);
 
         createClassifier(model, device, numThreads);
 
         /* Load image */
         imageView = (ImageView)findViewById(R.id.demo_image);
-        imageView.setImageResource(image_id);
+        imageView.setImageResource(imageId);
         image = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
 
         /* Load text for displaying result */
@@ -104,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 /* TODO: Submit current label with intermediate tensor (feedbackInput) */
+                labelIndex = classifier.labels.indexOf(feedbackInput);
+                saveLabel(imageId, labelIndex);
                 Toast toast = Toast.makeText(getApplicationContext(), String.format("(%s) Success :)", feedbackInput), Toast.LENGTH_SHORT);
                 toast.show();
                 finish();
@@ -127,8 +134,15 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 feedbackInput = userInput.getText().toString();
                 /* TODO: Submit corrected label with intermediate tensor (feedbackInput) */
-                Toast toast = Toast.makeText(getApplicationContext(), String.format("(%s) Thanks for your feedback :)", feedbackInput), Toast.LENGTH_SHORT);
-                Log.d(tag, String.format("Correct output: %s", feedbackInput));
+                labelIndex = classifier.labels.indexOf(feedbackInput);
+                Toast toast;
+                if (labelIndex == -1) {
+                    toast = Toast.makeText(getApplicationContext(), String.format("(%s) is not a valid label :(", feedbackInput), Toast.LENGTH_SHORT);
+                } else {
+                    saveLabel(imageId, labelIndex);
+                    toast = Toast.makeText(getApplicationContext(), String.format("(%s) Thanks for your feedback :)", feedbackInput), Toast.LENGTH_SHORT);
+                    Log.d(tag, String.format("Correct output: %s", feedbackInput));
+                }
                 toast.show();
                 finish();
             }
@@ -169,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (classifier != null) {
             final long startTime = SystemClock.uptimeMillis();
-            final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
+            final List<Classifier.Recognition> results = classifier.recognizeImage(scaledImage, imageId, orientation, MainActivity.context);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
             textView.setText(String.format("%s\n%s\n%s", results.get(0), results.get(1), results.get(2)));
             feedbackInput = String.format("%s", results.get(0)).split("\\(", 0)[0].trim();
@@ -218,17 +232,40 @@ public class MainActivity extends AppCompatActivity {
 
     private void pushIntermediateFeature() {
         try {
-            String response = new HttpTask().execute("post").get();
-            if (response != null) {
-                Log.d(tag, "HTTP Response: " + response);
-                JSONObject json = new JSONObject(response);
-                Log.d(tag, "success: " + json.getString("success"));
+            File files_dir = getFilesDir();
+            for (String filename: files_dir.list()) {
+                if (filename.startsWith("intermediates") || filename.startsWith("label")) {
+                    File file = new File(files_dir, filename);
+                    String response = new HttpTask().execute("post", file.getAbsolutePath()).get();
+                    if (response != null) {
+                        Log.d(tag, "HTTP Response: " + response);
+                        JSONObject json = new JSONObject(response);
+                        Log.d(tag, "success: " + json.getString("success"));
+                    }
+                }
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
             e.printStackTrace();
         } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveLabel(int imageId, int labelIndex) {
+        String filename = "label_" + imageId;
+        FileOutputStream fos = null;
+        try {
+            fos = openFileOutput(filename, MODE_APPEND);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        try {
+            fos.write(String.valueOf(labelIndex).getBytes());
+            fos.flush();
+            fos.close();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
