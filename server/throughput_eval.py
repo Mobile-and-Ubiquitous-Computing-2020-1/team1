@@ -82,7 +82,6 @@ def main(args):
   model.build(batched_shape)
 
   num_params(model)
-  return
 
   optimizer = tf.keras.optimizers.Adam(learning_rate=0.005,
                                        beta_1=0.9,
