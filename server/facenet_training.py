@@ -15,6 +15,7 @@ from absl import flags
 import numpy as np
 import tensorflow as tf
 import torch
+import time
 
 from models import InceptionResNetV1
 from models import CenterLoss
@@ -186,29 +187,43 @@ def main(args):
     loss_metric.reset_states()
     center_loss_metric.reset_states()
     accuracy_metric.reset_states()
+    num_images = 0
+    start = time.time()
     for epoch_step, (images, labels) in enumerate(train_dataset):
       train_loss, train_center_loss, train_logits = train_step(images, labels)
 
-      global_step += 1
       loss_metric.update_state(train_loss)
       center_loss_metric.update_state(train_center_loss)
       accuracy_metric.update_state(labels, train_logits)
+      global_step += 1
+      num_images += images.shape[0]
+
       if global_step % FLAGS.log_frequency == 0:
+        end = time.time()
+        throughput = num_images / (end - start)
         logging.debug('Step %d (%f %% of epoch %d): loss = %f, '
-                      'center loss = %f, accuracy = %f, learning rate = %f',
-                      global_step, (epoch_step / step_per_epoch * 100), epoch + 1,  # pylint: disable=line-too-long
+                      'center loss = %f, accuracy = %f, learning rate = %.4f '
+                      'throughput = %.2f',
+                      global_step, (epoch_step / step_per_epoch * 100),
+                      epoch + 1,
                       loss_metric.result().numpy(),
                       center_loss_metric.result().numpy(),
                       accuracy_metric.result().numpy() * 100,
-                      optimizer._decayed_lr(tf.float32))
-      if global_step % FLAGS.save_frequency == 0:
+                      optimizer._decayed_lr(tf.float32),  # pylint: disable=protected-access
+                      throughput)
+
+      if FLAGS.save_frequency > 0 and global_step % FLAGS.save_frequency == 0:
         model.save_weights(os.path.join(model_dir, 'facenet_ckpt'))
 
-      if global_step % 1000 == 0:
+      if FLAGS.save_frequency > 0 and global_step % 1000 == 0:
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
         with tf.io.gfile.GFile('./tflite-models/facenet.tflite', 'wb') as f:
           f.write(tflite_model)
+
+      if global_step % FLAGS.log_frequency == 0:
+        num_images = 0
+        start = time.time()
 
   # eval and finish
   eval()

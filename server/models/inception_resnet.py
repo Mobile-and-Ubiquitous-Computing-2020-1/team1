@@ -382,26 +382,30 @@ class InceptionResNetV1(keras.Model):
     return self.center_loss(features, labels)
 
   def call(self, x, training=False):
-    x = self.conv1(x, training=training)
-    x = self.conv2(x, training=training)
-    x = self.conv3(x, training=training)
-    x = self.pool(x, training=training)
-    x = self.conv4(x, training=training)
-    x = self.conv5(x, training=training)
-    x = self.conv6(x, training=training)
-    for block in self.block35:
-      x = block(x, training=training)
-    x = self.reduction_a(x, training=training)
-    for block in self.block17:
-      x = block(x, training=training)
-    x = self.reduction_b(x, training=training)
-    for block in self.block8:
-      x = block(x, training=training)
-    x = self.avg_pool(x)
-    x = self.flatten(x)
-    x = self.dropout(x, training=training)
-    prelogits = self.embedding(x)
-    prelogits = self.last_bn(prelogits, training=training)
+    if len(x.shape) == 4:
+      x = self.conv1(x, training=training)
+      x = self.conv2(x, training=training)
+      x = self.conv3(x, training=training)
+      x = self.pool(x, training=training)
+      x = self.conv4(x, training=training)
+      x = self.conv5(x, training=training)
+      x = self.conv6(x, training=training)
+      for block in self.block35:
+        x = block(x, training=training)
+      x = self.reduction_a(x, training=training)
+      for block in self.block17:
+        x = block(x, training=training)
+      x = self.reduction_b(x, training=training)
+      for block in self.block8:
+        x = block(x, training=training)
+      x = self.avg_pool(x)
+      x = self.flatten(x)
+      x = self.dropout(x, training=training)
+      prelogits = self.embedding(x)
+      prelogits = self.last_bn(prelogits, training=training)
+    else:
+      # additional training
+      prelogits = x
     x = self.calculate_embedding(prelogits)
     x = self.classifier(x)
     x = self.activation(x)
