@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import glob
 import os
+import random
 
 import tensorflow as tf
 from tensorflow.python.data import Dataset
@@ -65,11 +66,24 @@ def create_data_pipeline(data_dir,
     dataset = dataset.map(
         lambda filename, label: (make_img_tensor(filename), label))
 
+    """
     if is_training:
       dataset = dataset.shuffle(num_classes * 2)
+    """
 
     dataset = dataset.batch(batch_size)
     return dataset
+
+  # pre-shuffle
+  train_dataset = list(map(lambda x: (x[0], x[1]),
+                           zip(train_datas, train_labels)))
+  random.shuffle(train_dataset)
+  logging.info('whole training datas: %d', len(train_dataset))
+  train_datas = []
+  train_labels = []
+  for d, l in train_dataset:
+    train_datas.append(d)
+    train_labels.append(l)
 
   train_dataset = Dataset.from_tensor_slices((train_datas, train_labels))
   test_dataset = Dataset.from_tensor_slices((test_datas, test_labels))

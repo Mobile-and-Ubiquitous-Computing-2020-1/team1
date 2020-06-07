@@ -26,11 +26,11 @@ FLAGS = flags.FLAGS
 # flags definition
 flags.DEFINE_integer('image_size', 160,
                      'default image size')
-flags.DEFINE_integer('batch_size', 64,
+flags.DEFINE_integer('batch_size', 90,
                      'training batch size')
-flags.DEFINE_integer('num_epochs', 30,
+flags.DEFINE_integer('num_epochs', 300,
                      'number of training epochs')
-flags.DEFINE_float('learning_rate', 0.1,
+flags.DEFINE_float('learning_rate', 0.05,
                    'train learning rate')
 flags.DEFINE_integer('log_frequency', 50,
                      'logging frequency')
@@ -46,6 +46,8 @@ flags.DEFINE_bool('load_pretrained', False,
                   'load pretrained weights')
 flags.DEFINE_bool('save_tflite', False,
                   'directly save tflite model')
+flags.DEFINE_bool('use_center_loss', False,
+                  'toggle center loss')
 
 def load_pretrained(model):
   """load pretrained weight from pretrained pytorch model"""
@@ -87,7 +89,8 @@ def main(args):
     create_data_pipeline(FLAGS.data_dir, FLAGS.batch_size,
                          FLAGS.image_size)
 
-  model = InceptionResNetV1(num_classes=num_classes)
+  model = InceptionResNetV1(num_classes=num_classes,
+                            use_center_loss=FLAGS.use_center_loss)
   img_size = (None, FLAGS.image_size, FLAGS.image_size, 3)
   model.build(img_size)
 
@@ -110,11 +113,6 @@ def main(args):
     with tf.io.gfile.GFile('./tflite-models/facenet.tflite', 'wb') as f:
       f.write(tflite_model)
     return
-
-  optimizer = tf.keras.optimizers.Adam(learning_rate=0.1,
-                                       beta_1=0.9,
-                                       beta_2=0.999,
-                                       epsilon=0.1)
 
   loss_metric = tf.keras.metrics.Mean(name='loss', dtype=tf.float32)
   center_loss_metric = tf.keras.metrics.Mean(name='center_loss',
@@ -142,24 +140,38 @@ def main(args):
              loss_metric.result().numpy(),
              accuracy_metric.result().numpy() * 100))
 
-    return
-
   if FLAGS.eval:
     eval()
     return
 
   # train
+  step_per_epoch = math.ceil(num_train / FLAGS.batch_size)
+
+  lr_scheduler = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+      [100 * step_per_epoch, 200 * step_per_epoch],
+      [FLAGS.learning_rate, FLAGS.learning_rate * 0.1, FLAGS.learning_rate * 0.01]
+  )
+
+  optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler,
+                                       beta_1=0.9,
+                                       beta_2=0.999,
+                                       epsilon=0.1)
+
   @tf.function(input_signature=(tf.TensorSpec(img_size, tf.float32),
                                 tf.TensorSpec((None,), tf.int32)))
   def train_step(images, labels):
     with tf.GradientTape() as tape:
       logits, prelogits = model(images, training=True)
-      # recomputation embedding (for export convenience)
-      embeddings = model.calculate_embedding(prelogits)
       loss = tf.keras.losses.sparse_categorical_crossentropy(
           labels, logits, False)
       loss = tf.reduce_mean(loss)
-      center_loss = model.calculate_center_loss(embeddings, labels)
+
+      if FLAGS.use_center_loss:
+        # recomputation embedding (for export convenience)
+        embeddings = model.calculate_embedding(prelogits)
+        center_loss = model.calculate_center_loss(embeddings, labels)
+      else:
+        center_loss = tf.constant(0.0, dtype=tf.float32)
       loss = (center_loss * 0.007) + loss
     grads = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -170,7 +182,6 @@ def main(args):
     os.makedirs(model_dir)
 
   global_step = 0
-  step_per_epoch = math.ceil(num_train / FLAGS.batch_size)
   for epoch in range(FLAGS.num_epochs):
     loss_metric.reset_states()
     center_loss_metric.reset_states()
@@ -184,11 +195,12 @@ def main(args):
       accuracy_metric.update_state(labels, train_logits)
       if global_step % FLAGS.log_frequency == 0:
         logging.debug('Step %d (%f %% of epoch %d): loss = %f, '
-                      'center loss = %f, accuracy = %f',
+                      'center loss = %f, accuracy = %f, learning rate = %f',
                       global_step, (epoch_step / step_per_epoch * 100), epoch + 1,  # pylint: disable=line-too-long
                       loss_metric.result().numpy(),
                       center_loss_metric.result().numpy(),
-                      accuracy_metric.result().numpy())
+                      accuracy_metric.result().numpy() * 100,
+                      optimizer._decayed_lr(tf.float32))
       if global_step % FLAGS.save_frequency == 0:
         model.save_weights(os.path.join(model_dir, 'facenet_ckpt'))
 

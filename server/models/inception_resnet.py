@@ -48,7 +48,7 @@ class BaseConvBlock(keras.Model):
                kernel_size,
                strides=(1, 1),
                padding='valid',
-               weight_decay=0.0,
+               weight_decay=5e-4,
                kernel_initializer=initializers.glorot_uniform,
                batch_norm_decay=0.995,
                batch_norm_epsilon=0.001,
@@ -306,8 +306,9 @@ class ReductionB(keras.Model):
 
 class InceptionResNetV1(keras.Model):
   def __init__(self,
-               dropout_keep_prob=0.8,
+               dropout_keep_prob=0.4,
                bottleneck_layer_size=512,
+               use_center_loss=False,
                num_classes=8631):
     super(InceptionResNetV1, self).__init__()
 
@@ -360,10 +361,14 @@ class InceptionResNetV1(keras.Model):
                                    kernel_regularizer=regularizers.l2(0.0),
                                    name='Logits')
     self.activation = layers.Activation('softmax')
-    self.center_loss = CenterLoss(num_classes, 512)
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
 
   def build(self, input_shape):
-    self.center_loss.build(input_shape)
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
     super(InceptionResNetV1, self).build(input_shape)
 
   def calculate_embedding(self, prelogits):
@@ -373,6 +378,7 @@ class InceptionResNetV1(keras.Model):
     return x
 
   def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
     return self.center_loss(features, labels)
 
   def call(self, x, training=False):
