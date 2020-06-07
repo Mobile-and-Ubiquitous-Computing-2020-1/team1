@@ -358,7 +358,7 @@ class InceptionResNetV1(keras.Model):
     # pylint: disable=line-too-long
     self.classifier = layers.Dense(num_classes,
                                    kernel_initializer=initializers.glorot_uniform,
-                                   kernel_regularizer=regularizers.l2(0.0),
+                                   kernel_regularizer=regularizers.l2(5e-4),
                                    name='Logits')
     self.activation = layers.Activation('softmax')
 
@@ -404,7 +404,7 @@ class InceptionResNetV1(keras.Model):
       prelogits = self.embedding(x)
       prelogits = self.last_bn(prelogits, training=training)
     else:
-      # additional training
+      assert len(x.shape) == 2
       prelogits = x
     x = self.calculate_embedding(prelogits)
     x = self.classifier(x)
