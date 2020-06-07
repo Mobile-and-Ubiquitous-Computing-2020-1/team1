@@ -410,3 +410,394 @@ class InceptionResNetV1(keras.Model):
     x = self.classifier(x)
     x = self.activation(x)
     return x, prelogits
+
+class ThawedModel1(keras.Model):
+  """
+  assume only first three layers are fixed
+  input size should be 38 x 38 x 64
+  """
+  def __init__(self,
+               dropout_keep_prob=0.4,
+               bottleneck_layer_size=512,
+               use_center_loss=False,
+               num_classes=8631):
+    super(ThawedModel1, self).__init__()
+
+    self.conv4 = BaseConvBlock(80, (1, 1),
+                               padding='valid',
+                               name='Conv2d_3b_1x1')
+    self.conv5 = BaseConvBlock(192, (3, 3),
+                               padding='valid',
+                               name='Conv2d_4a_3x3')
+    self.conv6 = BaseConvBlock(256, (3, 3),
+                               strides=(2, 2),
+                               padding='valid',
+                               name='Conv2d_4b_3x3')
+
+    self.block35 = [Block35(256, scale=0.17) for _ in range(5)]
+
+    self.reduction_a = ReductionA(192, 192, 256, 384)  # 256 + 256 + 384
+
+    self.block17 = [Block17(256 + 256 + 384, scale=0.10) for _ in range(10)]
+
+    self.reduction_b = ReductionB()
+
+    self.block8 = [Block8(1792, scale=0.20, activation_fn=tf.nn.relu \
+                          if i < 5 else None) for i in range(6)]
+
+    self.avg_pool = layers.GlobalAveragePooling2D(name='AvgPool_1a_global')
+
+    self.flatten = layers.Flatten()
+    self.dropout = layers.Dropout(1 - dropout_keep_prob)
+
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck',
+                                  use_bias=False)
+    self.last_bn = layers.BatchNormalization()
+    # pylint: disable=line-too-long
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(5e-4),
+                                   name='Logits')
+    self.activation = layers.Activation('softmax')
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
+    super(ThawedModel1, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
+
+  def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
+    return self.center_loss(features, labels)
+
+  def call(self, x, training=False):
+    x = self.conv4(x, training=training)
+    x = self.conv5(x, training=training)
+    x = self.conv6(x, training=training)
+    for block in self.block35:
+      x = block(x, training=training)
+    x = self.reduction_a(x, training=training)
+    for block in self.block17:
+      x = block(x, training=training)
+    x = self.reduction_b(x, training=training)
+    for block in self.block8:
+      x = block(x, training=training)
+    x = self.avg_pool(x)
+    x = self.flatten(x)
+    x = self.dropout(x, training=training)
+    prelogits = self.embedding(x)
+    prelogits = self.last_bn(prelogits, training=training)
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
+
+class ThawedModel2(keras.Model):
+  """
+  input size should be 17 x 17 x 256
+  """
+  def __init__(self,
+               dropout_keep_prob=0.4,
+               bottleneck_layer_size=512,
+               use_center_loss=False,
+               num_classes=8631):
+    super(ThawedModel2, self).__init__()
+
+    self.block35 = [Block35(256, scale=0.17) for _ in range(5)]
+
+    self.reduction_a = ReductionA(192, 192, 256, 384)  # 256 + 256 + 384
+
+    self.block17 = [Block17(256 + 256 + 384, scale=0.10) for _ in range(10)]
+
+    self.reduction_b = ReductionB()
+
+    self.block8 = [Block8(1792, scale=0.20, activation_fn=tf.nn.relu \
+                          if i < 5 else None) for i in range(6)]
+
+    self.avg_pool = layers.GlobalAveragePooling2D(name='AvgPool_1a_global')
+
+    self.flatten = layers.Flatten()
+    self.dropout = layers.Dropout(1 - dropout_keep_prob)
+
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck',
+                                  use_bias=False)
+    self.last_bn = layers.BatchNormalization()
+    # pylint: disable=line-too-long
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(5e-4),
+                                   name='Logits')
+    self.activation = layers.Activation('softmax')
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
+    super(ThawedModel2, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
+
+  def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
+    return self.center_loss(features, labels)
+
+  def call(self, x, training=False):
+    for block in self.block35:
+      x = block(x, training=training)
+    x = self.reduction_a(x, training=training)
+    for block in self.block17:
+      x = block(x, training=training)
+    x = self.reduction_b(x, training=training)
+    for block in self.block8:
+      x = block(x, training=training)
+    x = self.avg_pool(x)
+    x = self.flatten(x)
+    x = self.dropout(x, training=training)
+    prelogits = self.embedding(x)
+    prelogits = self.last_bn(prelogits, training=training)
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
+
+class ThawedModel3(keras.Model):
+  """
+  input size should be 17 x 17 x 256
+  """
+  def __init__(self,
+               dropout_keep_prob=0.4,
+               bottleneck_layer_size=512,
+               use_center_loss=False,
+               num_classes=8631):
+    super(ThawedModel3, self).__init__()
+
+    self.reduction_a = ReductionA(192, 192, 256, 384)  # 256 + 256 + 384
+
+    self.block17 = [Block17(256 + 256 + 384, scale=0.10) for _ in range(10)]
+
+    self.reduction_b = ReductionB()
+
+    self.block8 = [Block8(1792, scale=0.20, activation_fn=tf.nn.relu \
+                          if i < 5 else None) for i in range(6)]
+
+    self.avg_pool = layers.GlobalAveragePooling2D(name='AvgPool_1a_global')
+
+    self.flatten = layers.Flatten()
+    self.dropout = layers.Dropout(1 - dropout_keep_prob)
+
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck',
+                                  use_bias=False)
+    self.last_bn = layers.BatchNormalization()
+    # pylint: disable=line-too-long
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(5e-4),
+                                   name='Logits')
+    self.activation = layers.Activation('softmax')
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
+    super(ThawedModel3, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
+
+  def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
+    return self.center_loss(features, labels)
+
+  def call(self, x, training=False):
+    x = self.reduction_a(x, training=training)
+    for block in self.block17:
+      x = block(x, training=training)
+    x = self.reduction_b(x, training=training)
+    for block in self.block8:
+      x = block(x, training=training)
+    x = self.avg_pool(x)
+    x = self.flatten(x)
+    x = self.dropout(x, training=training)
+    prelogits = self.embedding(x)
+    prelogits = self.last_bn(prelogits, training=training)
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
+
+class ThawedModel4(keras.Model):
+  """
+  input size should be 8 x 8 x 896
+  """
+  def __init__(self,
+               dropout_keep_prob=0.4,
+               bottleneck_layer_size=512,
+               use_center_loss=False,
+               num_classes=8631):
+    super(ThawedModel4, self).__init__()
+
+    self.reduction_b = ReductionB()
+
+    self.block8 = [Block8(1792, scale=0.20, activation_fn=tf.nn.relu \
+                          if i < 5 else None) for i in range(6)]
+
+    self.avg_pool = layers.GlobalAveragePooling2D(name='AvgPool_1a_global')
+
+    self.flatten = layers.Flatten()
+    self.dropout = layers.Dropout(1 - dropout_keep_prob)
+
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck',
+                                  use_bias=False)
+    self.last_bn = layers.BatchNormalization()
+    # pylint: disable=line-too-long
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(5e-4),
+                                   name='Logits')
+    self.activation = layers.Activation('softmax')
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
+    super(ThawedModel4, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
+
+  def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
+    return self.center_loss(features, labels)
+
+  def call(self, x, training=False):
+    x = self.reduction_b(x, training=training)
+    for block in self.block8:
+      x = block(x, training=training)
+    x = self.avg_pool(x)
+    x = self.flatten(x)
+    x = self.dropout(x, training=training)
+    prelogits = self.embedding(x)
+    prelogits = self.last_bn(prelogits, training=training)
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
+
+class ThawedModel5(keras.Model):
+  """
+  input size should be 1792
+  """
+  def __init__(self,
+               dropout_keep_prob=0.4,
+               bottleneck_layer_size=512,
+               use_center_loss=False,
+               num_classes=8631):
+    super(ThawedModel5, self).__init__()
+
+    self.embedding = layers.Dense(bottleneck_layer_size, name='Bottleneck',
+                                  use_bias=False)
+    self.last_bn = layers.BatchNormalization()
+    # pylint: disable=line-too-long
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(5e-4),
+                                   name='Logits')
+    self.activation = layers.Activation('softmax')
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
+    super(ThawedModel5, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
+
+  def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
+    return self.center_loss(features, labels)
+
+  def call(self, x, training=False):
+    prelogits = self.embedding(x)
+    prelogits = self.last_bn(prelogits, training=training)
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
+
+class ThawedModel6(keras.Model):
+  """
+  input size should be 512
+  """
+  def __init__(self,
+               dropout_keep_prob=0.4,
+               bottleneck_layer_size=512,
+               use_center_loss=False,
+               num_classes=8631):
+    super(ThawedModel6, self).__init__()
+
+    self.classifier = layers.Dense(num_classes,
+                                   kernel_initializer=initializers.glorot_uniform,
+                                   kernel_regularizer=regularizers.l2(5e-4),
+                                   name='Logits')
+    self.activation = layers.Activation('softmax')
+
+    self.use_center_loss = use_center_loss
+    if use_center_loss:
+      self.center_loss = CenterLoss(num_classes, 512)
+
+  def build(self, input_shape):
+    if self.use_center_loss:
+      self.center_loss.build(input_shape)
+    super(ThawedModel6, self).build(input_shape)
+
+  def calculate_embedding(self, prelogits):
+    # https://github.com/tamerthamoqa/facenet-pytorch-vggface2/blob/master/models/resnet.py
+    x = tf.nn.l2_normalize(prelogits, axis=1, epsilon=1e-10)
+    x = x * 10.
+    return x
+
+  def calculate_center_loss(self, features, labels):
+    assert self.use_center_loss
+    return self.center_loss(features, labels)
+
+  def call(self, x, training=False):
+    prelogits = x
+    x = self.calculate_embedding(prelogits)
+    x = self.classifier(x)
+    x = self.activation(x)
+    return x, prelogits
