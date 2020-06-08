@@ -26,6 +26,7 @@ class Trial:
   num_features: int
   gpu_idx: int
   best_acc: float = 0.0
+  model_path: str = ""
 
 
 @dataclass
@@ -46,10 +47,10 @@ class Resource:
 class Trainer:
   def __init__(self):
     self.intermediate_features = []
-    self.running_models: List[Trial] = []
+    self.running_models: Dict[int, Trial] = {}
     self.trained_models: List[Trial] = []
 
-    self.best_model: Optional[Tuple[Trial, str]] = None
+    self.best_model: Optional[Trial] = None
 
     self.gpus = Resource(free=set(range(C.MAX_GPUS)), busy=set())
     self._schedule_event = asyncio.Event()
@@ -85,24 +86,30 @@ class Trainer:
     self.intermediate_features.append(filename)
     self.reschedule()
 
-
-
   def get_best_model_file(self):
     """Return filename of the best model trained so far."""
-    return self.best_model[1]
+    assert self.best_model
+    return self.best_model.model_path
 
   def get_best_model_info(self):
     """Return information about the best model trained so far."""
-    return self.best_model[0]
+    assert self.best_model
+    return self.best_model
 
-  def update_model(self):
-    pass
+  def update_model(self, acc):
+    trial_id = acc.trial_id
+    best_acc = acc.acc
+    trial = self.running_models[trial_id]
+    trial.best_acc = best_acc
 
   async def _launch_task(self, gpu_idx: int):
-    trial = Trial(self._trial_idx, len(self.intermediate_features), gpu_idx)
+    trial = Trial(self._trial_idx, len(self.intermediate_features), gpu_idx, 0.0)
     self._trial_idx += 1
+    model_path = f"{trial.id}.tflite"
+    trial.model_path = model_path
+    self.running_models[trial.id] = trial
 
-    env = dict(CUDA_VISIBLE_DEVICES=str(gpu_idx), CALLBACK_URL="127.0.0.1:8000")
+    env = dict(CUDA_VISIBLE_DEVICES=str(gpu_idx), CALLBACK_URL="127.0.0.1:8000", MODEL_PATH=model_path)
     command = C.BACKGROUND_JOB
     proc = await asyncio.create_subprocess_exec(
       sys.executable, command, env=env,
@@ -110,6 +117,10 @@ class Trainer:
     )
     await proc.wait()
     self.gpus.release(gpu_idx)
+    self.trained_models.append(trial)
+
+    if trial.best_acc > self.best_model.best_acc:
+      self.best_model = trial
 
 
 

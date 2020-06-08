@@ -161,7 +161,8 @@ def main(args):
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
 
-        output_path = os.path.join(C.MODEL_PATH, "facenet.tflite")
+        model_path = os.getenv("MODEL_PATH")
+        output_path = os.path.join(C.MODEL_PATH, model_path)
         with tf.io.gfile.GFile(output_path, 'wb') as f:
           f.write(tflite_model)
   # eval and finish

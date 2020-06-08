@@ -84,7 +84,7 @@ def app_generator() -> FastAPI:
   async def _list_models(
     trainer: Trainer = Depends(get_trainer)
   ):
-    pass
+    return trainer.trained_models
 
   return app
 
