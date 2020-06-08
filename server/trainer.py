@@ -56,6 +56,8 @@ class Trainer:
     self._schedule_event = asyncio.Event()
     self._trial_idx = 0
 
+    self._max_feature_size = 0
+
   async def start(self):
     asyncio.create_task(self._run_scheduler())
 
@@ -66,14 +68,16 @@ class Trainer:
 
       if not self.gpus.free:
         continue
+
+      if self._max_feature_size >= len(self.intermediate_features):
+        continue
+
       gpu_idx = self.gpus.acquire()
+      self._max_feature_size = len(self.intermediate_features)
       asyncio.create_task(self._launch_task(gpu_idx))
 
   def reschedule(self):
     self._schedule_event.set()
-
-  def add_model(self):
-    pass
 
   async def add_intermediate_feature(self, request):
     """Add a intermediate feature to the system."""
@@ -119,9 +123,11 @@ class Trainer:
     self.gpus.release(gpu_idx)
     self.trained_models.append(trial)
 
-    if trial.best_acc > self.best_model.best_acc:
+    if not self.best_model:
       self.best_model = trial
-
+    elif trial.best_acc > self.best_model.best_acc:
+      self.best_model = trial
+    self.reschedule()
 
 
 
