@@ -1,0 +1,7 @@
+uvicorn
+uvloop
+fastapi[all]
+aiofiles
+tensorflow-gpu
+
+pytest
