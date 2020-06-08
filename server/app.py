@@ -5,7 +5,7 @@ import os
 import sys
 
 import aiofiles
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Body
 from fastapi.responses import FileResponse, StreamingResponse
 from starlette.responses import PlainTextResponse
 from pydantic.dataclasses import dataclass
@@ -13,6 +13,11 @@ from pydantic.dataclasses import dataclass
 
 import const as C
 from trainer import Trainer, get_trainer, register
+
+
+@dataclass
+class Accuracy:
+  acc: float
 
 
 def app_generator() -> FastAPI:
@@ -27,6 +32,7 @@ def app_generator() -> FastAPI:
 
   @app.get(C.PING_URL, response_class=PlainTextResponse)
   def _pong() -> str:
+    """Respond pong."""
     return "pong"
 
 
@@ -38,16 +44,11 @@ def app_generator() -> FastAPI:
     content_disposition: str = Header(None),
     trainer: Trainer = Depends(get_trainer)
   ):
+    """Push new features to server."""
     if content_type != "application/octet-stream":
       raise HTTPException(status_code=400, detail="wrong header, should be 'application/octet-stream'")
 
-    filename = content_disposition.split("filename=")[1].replace('"', '')
-    fullname = os.path.join(C.FEATURE_PATH, filename)
-
-    async with aiofiles.open(fullname, 'wb') as output:
-      await output.write(await request.body())  # todo change to streaming
-
-    trainer.add_intermediate_feature(filename)
+    await trainer.add_intermediate_feature(request)
     return dict(success=True)
 
 
@@ -55,6 +56,7 @@ def app_generator() -> FastAPI:
   async def _pull_model(
     trainer: Trainer = Depends(get_trainer)
   ):
+    """Pull models from server."""
     filename = trainer.get_best_model_file()
     fullname = os.path.join(C.MODEL_PATH, filename)
     return FileResponse(fullname, media_type="application/octet-stream")
@@ -64,21 +66,21 @@ def app_generator() -> FastAPI:
   async def _info_model(
     trainer: Trainer = Depends(get_trainer)
   ):
+    """Get information of best model."""
     model_info = trainer.get_best_model_info()
     return model_info
 
   @app.post(C.UPDATE_URL)
   async def _update_model_perf(
+    acc: Accuracy = Body(...),
     trainer: Trainer = Depends(get_trainer)
   ):
-    trainer.update_model()
+    """Update a running model performance."""
+    print('update trial')
+    # trainer.update_model()
 
   return app
 
-
-@dataclass
-class A:
-  pass
 
 
 app = app_generator()

@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import getpass
 import math
 import os
+import requests
 import time
 
 import numpy as np
@@ -17,6 +18,7 @@ import tensorflow as tf
 from models import InceptionResNetV1
 from tensorflow.python.data import Dataset
 from utils.log import fedex_logger as logging
+from utils.data_pipeline import create_data_pipeline
 
 import const as C
 
@@ -27,7 +29,7 @@ flags.DEFINE_integer('image_size', 160,
                      'default image size')
 flags.DEFINE_integer('batch_size', 90,
                      'training batch size')
-flags.DEFINE_integer('num_epochs', 300,
+flags.DEFINE_integer('num_epochs', 15,
                      'number of training epochs')
 flags.DEFINE_integer('num_classes', 8631,
                      'number of new classes')
@@ -74,6 +76,10 @@ def synthetic_dataset():
   return dataset
 
 def main(args):
+  _, test_dataset, _, _, _, num_test, _ = \
+    create_data_pipeline(FLAGS.data_dir, FLAGS.batch_size,
+                         FLAGS.image_size)
+
   num_classes = FLAGS.num_classes
   img_size = (None, FLAGS.image_size, FLAGS.image_size, 3)
   model = InceptionResNetV1(num_classes=num_classes,
@@ -117,6 +123,24 @@ def main(args):
     optimizer.apply_gradients(zip(grads, classifier.trainable_variables))
     return loss, logits
 
+  @tf.function(input_signature=(tf.TensorSpec(img_size, tf.float32),
+                                tf.TensorSpec((None,), tf.int32)))
+  def eval_step(images, labels):
+    logits, _ = model(images, training=False)
+    loss = tf.keras.losses.sparse_categorical_crossentropy(
+        labels, logits, False)
+    loss = tf.reduce_mean(loss)
+    return loss, logits
+
+  def eval():
+    accuracy_metric.reset_states()
+    step_per_epoch = math.ceil(num_test / FLAGS.batch_size)
+    for i, (images, labels) in enumerate(test_dataset):
+      loss, logits = eval_step(images, labels)
+      loss_metric.update_state(loss)
+      accuracy_metric.update_state(labels, logits)
+    return accuracy_metric.result().numpy() * 100
+
   model_dir = FLAGS.model_dir
   if not os.path.exists(model_dir):
     os.makedirs(model_dir)
@@ -127,7 +151,6 @@ def main(args):
     loss_metric.reset_states()
     accuracy_metric.reset_states()
     num_images = 0
-    start = time.time()
     for epoch_step, (images, labels) in enumerate(train_dataset):
       train_loss, train_logits = train_step(images, labels)
 
@@ -135,19 +158,6 @@ def main(args):
       accuracy_metric.update_state(labels, train_logits)
       global_step += 1
       num_images += images.shape[0]
-
-      if global_step % FLAGS.log_frequency == 0:
-        end = time.time()
-        throughput = num_images / (end - start)
-        logging.debug('Step %d (%f %% of epoch %d): loss = %f, '
-                      'accuracy = %f, learning rate = %.4f '
-                      'throughput = %.2f',
-                      global_step, (epoch_step / step_per_epoch * 100),
-                      epoch + 1,
-                      loss_metric.result().numpy(),
-                      accuracy_metric.result().numpy() * 100,
-                      optimizer._decayed_lr(tf.float32),  # pylint: disable=protected-access
-                      throughput)
 
       if FLAGS.save_frequency > 0 and global_step % FLAGS.save_frequency == 0:
         model.save_weights(os.path.join(model_dir, 'facenet_ckpt'))
@@ -159,10 +169,14 @@ def main(args):
         output_path = os.path.join(C.MODEL_PATH, "facenet.tflite")
         with tf.io.gfile.GFile(output_path, 'wb') as f:
           f.write(tflite_model)
+  # eval and finish
+  acc = eval()
+  print(acc)
 
-      if global_step % FLAGS.log_frequency == 0:
-        num_images = 0
-        start = time.time()
+  requests.post("http://127.0.0.1:8000/model/train", json=dict(acc=acc))
+
+
+
 
 if __name__ == "__main__":
   app.run(main)
