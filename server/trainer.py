@@ -74,7 +74,9 @@ class Trainer:
 
       gpu_idx = self.gpus.acquire()
       self._max_feature_size = len(self.intermediate_features)
-      asyncio.create_task(self._launch_task(gpu_idx))
+      trial_id = self._trial_idx
+      self._trial_idx += 1
+      asyncio.create_task(self._launch_task(trial_id, gpu_idx))
 
   def reschedule(self):
     self._schedule_event.set()
@@ -106,14 +108,19 @@ class Trainer:
     trial = self.running_models[trial_id]
     trial.best_acc = best_acc
 
-  async def _launch_task(self, gpu_idx: int):
-    trial = Trial(self._trial_idx, len(self.intermediate_features), gpu_idx, 0.0)
-    self._trial_idx += 1
+  async def _launch_task(self, trial_id: int, gpu_idx: int):
+    trial = Trial(trial_id, len(self.intermediate_features), gpu_idx, 0.0)
+
     model_path = f"{trial.id}.tflite"
     trial.model_path = model_path
     self.running_models[trial.id] = trial
 
-    env = dict(CUDA_VISIBLE_DEVICES=str(gpu_idx), CALLBACK_URL="127.0.0.1:8000", MODEL_PATH=model_path)
+    env = dict(
+      CUDA_VISIBLE_DEVICES=str(gpu_idx),
+      CALLBACK_URL="127.0.0.1:8000",
+      MODEL_PATH=model_path,
+      TRIAL_ID=str(trial_id)
+    )
     command = C.BACKGROUND_JOB
     proc = await asyncio.create_subprocess_exec(
       sys.executable, command, env=env,
