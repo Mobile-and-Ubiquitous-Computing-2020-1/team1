@@ -10,6 +10,7 @@ from __future__ import print_function
 import getpass
 import math
 import os
+import random
 
 from absl import app
 from absl import flags
@@ -19,6 +20,7 @@ import torch
 import time
 import tensorflow as tf
 from tensorflow.python import keras
+from tensorflow.python.data import Dataset
 from tensorflow.python.keras import layers
 from tensorflow.python.keras import initializers
 from tensorflow.python.keras import regularizers
@@ -37,7 +39,7 @@ flags.DEFINE_integer('batch_size', 90,
                      'training batch size')
 flags.DEFINE_integer('num_epochs', 300,
                      'number of training epochs')
-flags.DEFINE_integer('num_classes', 100,
+flags.DEFINE_integer('num_classes', 8631,
                      'number of new classes')
 flags.DEFINE_float('learning_rate', 0.05,
                    'train learning rate')
@@ -74,10 +76,13 @@ def synthetic_dataset():
            tf.random.uniform(shape=(len(tensors),),
                              minval=0, maxval=FLAGS.num_classes,
                              dtype=tf.int32))
-  yield additional_data
+  dataset = Dataset.from_tensor_slices(additional_data)
+  dataset = dataset.shuffle(1000)
+  dataset = dataset.batch(FLAGS.batch_size)
+  return dataset
 
 def main(args):
-  num_classes = 8631  # pretrained model num classes
+  num_classes = FLAGS.num_classes
   img_size = (None, FLAGS.image_size, FLAGS.image_size, 3)
   model = InceptionResNetV1(num_classes=num_classes,
                             use_center_loss=False)
@@ -88,13 +93,7 @@ def main(args):
   model.load_weights(os.path.join(FLAGS.checkpoint_path, 'facenet_ckpt'))
   logging.info('loading pretrained model finished!')
 
-  num_classes = FLAGS.num_classes
-  new_classifier = layers.Dense(num_classes,
-                                kernel_initializer=initializers.glorot_uniform,
-                                kernel_regularizer=regularizers.l2(5e-4),
-                                name='NewClassifier')
-  new_classifier.build((None, 512))
-  model.classifier = new_classifier  # switch layer
+  classifier = model.classifier
 
   loss_metric = tf.keras.metrics.Mean(name='loss', dtype=tf.float32)
   accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy(
@@ -122,8 +121,8 @@ def main(args):
       loss = tf.keras.losses.sparse_categorical_crossentropy(
           labels, logits, False)
       loss = tf.reduce_mean(loss)
-    grads = tape.gradient(loss, new_classifier.trainable_variables)
-    optimizer.apply_gradients(zip(grads, new_classifier.trainable_variables))
+    grads = tape.gradient(loss, classifier.trainable_variables)
+    optimizer.apply_gradients(zip(grads, classifier.trainable_variables))
     return loss, logits
 
   model_dir = FLAGS.model_dir

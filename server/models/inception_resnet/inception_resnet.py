@@ -411,6 +411,30 @@ class InceptionResNetV1(keras.Model):
     x = self.activation(x)
     return x, prelogits
 
+  def feature_extract(self, x):
+    """just feature extraction without training flag"""
+    x = self.conv1(x, training=False)
+    x = self.conv2(x, training=False)
+    x = self.conv3(x, training=False)
+    x = self.pool(x, training=False)
+    x = self.conv4(x, training=False)
+    x = self.conv5(x, training=False)
+    x = self.conv6(x, training=False)
+    for block in self.block35:
+      x = block(x, training=False)
+    x = self.reduction_a(x, training=False)
+    for block in self.block17:
+      x = block(x, training=False)
+    x = self.reduction_b(x, training=False)
+    for block in self.block8:
+      x = block(x, training=False)
+    x = self.avg_pool(x)
+    x = self.flatten(x)
+    x = self.dropout(x, training=False)
+    prelogits = self.embedding(x)
+    prelogits = self.last_bn(prelogits, training=False)
+    return prelogits
+
 class ThawedModel1(keras.Model):
   """
   assume only first three layers are fixed

@@ -86,7 +86,7 @@ def load_pretrained(model):
 
 def main(args):
   # dataset preparation
-  train_dataset, test_dataset, num_classes, num_train, num_test = \
+  train_dataset, test_dataset, _, num_classes, num_train, num_test, _ = \
     create_data_pipeline(FLAGS.data_dir, FLAGS.batch_size,
                          FLAGS.image_size)
 
@@ -103,7 +103,7 @@ def main(args):
     except ValueError:
       logging.debug('pretrained checkpoint does not exists, '
                     'failed to restore center loss variable')
-    load_pretrained(model)
+    # load_pretrained(model)
     logging.info('loading pretrained model finished!')
 
   if FLAGS.save_tflite:
