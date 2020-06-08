@@ -32,3 +32,5 @@ try:
 except KeyError:
   fedex_logger.setLevel('DEBUG')
 fedex_logger.addHandler(stream_handler)
+
+_logging.basicConfig(filename="log.txt")

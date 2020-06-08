@@ -1,3 +1,5 @@
 checkpoints
 tflite-models
-intermediate-features
+intermediate-features/
+
+.vscode
