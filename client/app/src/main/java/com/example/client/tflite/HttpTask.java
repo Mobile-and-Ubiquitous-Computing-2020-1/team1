@@ -36,7 +36,24 @@ public class HttpTask extends AsyncTask<String, Void, String> {
     private String pull() {
         try {
             AndroidHttpClient http = AndroidHttpClient.newInstance("MyApp");
-            HttpGet method = new HttpGet(BASE_URL + "pull/");
+            HttpGet method = new HttpGet(BASE_URL + "model/best/pull");
+            HttpResponse response = http.execute(method);
+            HttpEntity entity = response.getEntity();
+            String s = EntityUtils.toString(entity);
+            http.close();
+            return s;
+        } catch (IOException e) {
+            LOGGER.d("Http failed");
+            e.printStackTrace();
+            this.exception = e;
+            return null;
+        }
+    }
+
+    private String info() {
+        try {
+            AndroidHttpClient http = AndroidHttpClient.newInstance("MyApp");
+            HttpGet method = new HttpGet(BASE_URL + "model/best/info");
             HttpResponse response = http.execute(method);
             HttpEntity entity = response.getEntity();
             String s = EntityUtils.toString(entity);
@@ -53,7 +70,7 @@ public class HttpTask extends AsyncTask<String, Void, String> {
     private String push(String filePath) {
         try {
             AndroidHttpClient http = AndroidHttpClient.newInstance("MyApp");
-            HttpPost method = new HttpPost(BASE_URL + "push/");
+            HttpPost method = new HttpPost(BASE_URL + "feature/push");
             File file = new File(filePath);
             method.setEntity(new FileEntity(file, "application/octet-stream;"));
             method.setHeader("Content-Disposition", String.format("form-data; filename=\"%s\"", file.getName()));
