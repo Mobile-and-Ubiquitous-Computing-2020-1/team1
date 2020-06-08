@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (classifier != null) {
             final long startTime = SystemClock.uptimeMillis();
-            final String result = classifier.recognizeImage(scaledImage, orientation, MainActivity.context);
+            final String result = classifier.recognizeImage(scaledImage, imageId, orientation, MainActivity.context);
 
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
             textView.setText(String.format("%s", result));

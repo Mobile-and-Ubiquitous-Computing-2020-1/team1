@@ -262,7 +262,7 @@ public abstract class Classifier {
     }
 
     /** Runs inference and returns the classification results. */
-    public String recognizeImage(final Bitmap bitmap, int sensorOrientation, Context context) {
+    public String recognizeImage(final Bitmap bitmap, int imageId, int sensorOrientation, Context context) {
 
         // Logs this method so that it can be analyzed with systrace.
         Trace.beginSection("recognizeImage");
@@ -289,11 +289,15 @@ public abstract class Classifier {
 
         FileOutputStream fos = null;
         try {
-            fos = context.openFileOutput("intermediates", MODE_APPEND);
-            FileChannel fc = fos.getChannel();
-            outputBuffers[1].getBuffer().rewind();
-            fc.write(outputBuffers[1].getBuffer());
-            fc.close();
+            String filename = "intermediates_" + imageId;
+            File file = new File(context.getFilesDir(), filename);
+            if (!file.exists()) {
+                fos = context.openFileOutput(filename, MODE_PRIVATE);
+                FileChannel fc = fos.getChannel();
+                outputBuffers[1].getBuffer().rewind();
+                fc.write(outputBuffers[1].getBuffer());
+                fc.close();
+            }
         } catch (FileNotFoundException e) {
             LOGGER.v("failed to write ByteBuffer (FileNotFoundException) " + e);
             e.printStackTrace();
