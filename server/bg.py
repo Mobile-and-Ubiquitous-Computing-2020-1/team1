@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 import getpass
 import math
 import os
+import glob
 import requests
 
 import numpy as np
@@ -52,16 +53,19 @@ def synthetic_dataset():
   shape_per_tensor = (1, 512)  # test for mobilenet_v1
   tensor_size = np.prod(shape_per_tensor)
 
-  path = os.path.join(C.FEATURE_PATH, "intermediates")
-  with open(path, 'rb') as f:
-    raw_bytes = f.read()
-  bytes_size = tensor_size * target_dtype.size
+  features = glob.glob("intermediate-features/*-feature")
+
   tensors = []
-  for i in range(0, len(raw_bytes), bytes_size):
-    raw_byte = raw_bytes[i:i+bytes_size]
-    tensor = tf.io.decode_raw(raw_byte, target_dtype)
-    tensor = tf.reshape(tensor, shape_per_tensor)
-    tensors.append(tensor)
+  for feature_path in features:
+    with open(feature_path, 'rb') as f:
+      raw_bytes = f.read()
+    bytes_size = tensor_size * target_dtype.size
+
+    for i in range(0, len(raw_bytes), bytes_size):
+      raw_byte = raw_bytes[i:i+bytes_size]
+      tensor = tf.io.decode_raw(raw_byte, target_dtype)
+      tensor = tf.reshape(tensor, shape_per_tensor)
+      tensors.append(tensor)
   tensor = tf.stack(tensors, axis=0)
   tensor = tf.reshape(tensor, (len(tensors), 512))
 
