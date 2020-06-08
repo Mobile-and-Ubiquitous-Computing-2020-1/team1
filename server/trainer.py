@@ -4,11 +4,10 @@ Responsible for training model
 """
 
 import asyncio
-import sys
 import logging
 import os
-
-from typing import Optional, List, Set, Tuple, Dict
+import sys
+from typing import Dict, List, Optional, Set, Tuple
 
 import aiofiles
 from pydantic.dataclasses import dataclass

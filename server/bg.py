@@ -6,21 +6,20 @@ additional training module for facenet
 from __future__ import absolute_import, division, print_function
 
 import getpass
+import glob
 import math
 import os
-import glob
-import requests
 
 import numpy as np
+import requests
 from absl import app, flags
 
+import const as C
 import tensorflow as tf
 from models import InceptionResNetV1
 from tensorflow.python.data import Dataset
-from utils.log import fedex_logger as logging
 from utils.data_pipeline import create_data_pipeline
-
-import const as C
+from utils.log import fedex_logger as logging
 
 FLAGS = flags.FLAGS
 

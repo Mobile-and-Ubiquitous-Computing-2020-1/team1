@@ -1,26 +1,21 @@
 """
 main training modeul for facenet
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import getpass
 import math
 import os
-
-from absl import app
-from absl import flags
-
-import numpy as np
-import tensorflow as tf
-import torch
 import time
 
-from models import InceptionResNetV1
-from models import CenterLoss
-from utils.log import fedex_logger as logging
+import numpy as np
+import torch
+from absl import app, flags
+
+import tensorflow as tf
+from models import CenterLoss, InceptionResNetV1
 from utils.data_pipeline import create_data_pipeline
+from utils.log import fedex_logger as logging
 
 FLAGS = flags.FLAGS
 

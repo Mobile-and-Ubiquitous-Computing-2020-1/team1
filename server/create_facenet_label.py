@@ -5,6 +5,7 @@ import glob
 
 import numpy as np
 
+
 def main():
   # Error
   # csv_data = np.genfromtxt('./assets/identity_meta.csv', delimiter=',')

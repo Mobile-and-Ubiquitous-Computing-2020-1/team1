@@ -5,11 +5,10 @@ import os
 import sys
 
 import aiofiles
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Body
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
-from starlette.responses import PlainTextResponse
 from pydantic.dataclasses import dataclass
-
+from starlette.responses import PlainTextResponse
 
 import const as C
 from trainer import Trainer, get_trainer, register
