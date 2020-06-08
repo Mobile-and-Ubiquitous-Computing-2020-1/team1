@@ -39,7 +39,6 @@ import java.io.InputStream;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +56,9 @@ public abstract class Classifier {
     public enum Model {
         RESNET,
         FLOAT_MOBILENET,
-        FACENET,
+        QUANTIZED_MOBILENET,
+        FLOAT_EFFICIENTNET,
+        QUANTIZED_EFFICIENTNET
     }
 
     /** The runtime device type used for executing classification. */
@@ -118,8 +119,6 @@ public abstract class Classifier {
             return new ClassifierResNet(activity, device, numThreads);
         } else if (model == Model.FLOAT_MOBILENET) {
             return new ClassifierFloatMobileNet(activity, device, numThreads);
-        } else if (model == Model.FACENET) {
-            return new ClassifierFaceNet(activity, device, numThreads);
         } else {
             throw new UnsupportedOperationException();
         }
@@ -217,9 +216,6 @@ public abstract class Classifier {
 
         // Loads labels out from the label file.
         labels = FileUtil.loadLabels(activity, getLabelPath());
-        LOGGER.d("num labels " + labels.size());
-        LOGGER.d("first label " + labels.get(0));
-        LOGGER.d("last label " + labels.get(labels.size() - 1));
 
         // Reads type and shape of input and output tensors, respectively.
         int imageTensorIndex = 0;
@@ -227,13 +223,9 @@ public abstract class Classifier {
         imageSizeY = imageShape[1];
         imageSizeX = imageShape[2];
 
-        LOGGER.d("image SizeY " + imageSizeY);
-        LOGGER.d("image SizeX " + imageSizeX);
-
         outputBuffers = new TensorBuffer[tflite.getOutputTensorCount()];
         for (int outputIdx = 0; outputIdx < tflite.getOutputTensorCount(); outputIdx++) {
             int[] outputShape = tflite.getOutputTensor(outputIdx).shape();
-            LOGGER.d(outputIdx + "-th output Shape " + Arrays.toString(outputShape));
             DataType outputDataType = tflite.getOutputTensor(outputIdx).dataType();
             outputBuffers[outputIdx] =  TensorBuffer.createFixedSize(outputShape, outputDataType);
         }
@@ -249,20 +241,8 @@ public abstract class Classifier {
         LOGGER.d("Created a Tensorflow Lite Image Classifier.");
     }
 
-    private int argmax(float[] prob) {
-        float max = prob[0];
-        int idx = 0;
-        for (int i = 1; i < prob.length; i++) {
-            if (prob[i] > max) {
-                max = prob[i];
-                idx = i;
-            }
-        }
-        return idx;
-    }
-
     /** Runs inference and returns the classification results. */
-    public String recognizeImage(final Bitmap bitmap, int sensorOrientation, Context context) {
+    public List<Recognition> recognizeImage(final Bitmap bitmap, int imageId, int sensorOrientation, Context context) {
 
         // Logs this method so that it can be analyzed with systrace.
         Trace.beginSection("recognizeImage");
@@ -289,11 +269,15 @@ public abstract class Classifier {
 
         FileOutputStream fos = null;
         try {
-            fos = context.openFileOutput("intermediates", MODE_APPEND);
-            FileChannel fc = fos.getChannel();
-            outputBuffers[1].getBuffer().rewind();
-            fc.write(outputBuffers[1].getBuffer());
-            fc.close();
+            String filename = "intermediates_" + imageId;
+            File file = new File(context.getFilesDir(), filename);
+            if (!file.exists()) {
+                fos = context.openFileOutput(filename, MODE_PRIVATE);
+                FileChannel fc = fos.getChannel();
+                outputBuffers[1].getBuffer().rewind();
+                fc.write(outputBuffers[1].getBuffer());
+                fc.close();
+            }
         } catch (FileNotFoundException e) {
             LOGGER.v("failed to write ByteBuffer (FileNotFoundException) " + e);
             e.printStackTrace();
@@ -308,18 +292,20 @@ public abstract class Classifier {
                 try {
                     fos.close();
                 } catch (IOException e) {
-                    // this will not be catches (already check whether fos is null)
+                    // this will not be catches (already check whetehr fos is null)
                     e.printStackTrace();
                 }
             }
         }
-        LOGGER.v("writing intermediates finished");
 
-        float[] probs = outputBuffers[0].getFloatArray();
-        int idx = argmax(probs);
+        // Gets the map of label and probability.
+        Map<String, Float> labeledProbability =
+                new TensorLabel(labels, probabilityProcessor.process(outputBuffers[0]))
+                        .getMapWithFloatValue();
+        Trace.endSection();
 
-        LOGGER.d("argmax idx " + idx + " " + labels.get(idx));
-        return labels.get(idx);
+        // Gets top-k results.
+        return getTopKProbability(labeledProbability);
     }
 
     /** Closes the interpreter and model to release resources. */
