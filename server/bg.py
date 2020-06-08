@@ -3,32 +3,23 @@ additional training module for facenet
 (kind of transfer learning)
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import getpass
+import glob
 import math
 import os
-import random
-
-from absl import app
-from absl import flags
 
 import numpy as np
-import torch
-import time
-import tensorflow as tf
-from tensorflow.python import keras
-from tensorflow.python.data import Dataset
-from tensorflow.python.keras import layers
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
+import requests
+from absl import app, flags
 
+import const as C
+import tensorflow as tf
 from models import InceptionResNetV1
-from models import CenterLoss
-from utils.log import fedex_logger as logging
+from tensorflow.python.data import Dataset
 from utils.data_pipeline import create_data_pipeline
+from utils.log import fedex_logger as logging
 
 FLAGS = flags.FLAGS
 
@@ -37,7 +28,7 @@ flags.DEFINE_integer('image_size', 160,
                      'default image size')
 flags.DEFINE_integer('batch_size', 90,
                      'training batch size')
-flags.DEFINE_integer('num_epochs', 300,
+flags.DEFINE_integer('num_epochs', 15,
                      'number of training epochs')
 flags.DEFINE_integer('num_classes', 8631,
                      'number of new classes')
@@ -60,15 +51,20 @@ def synthetic_dataset():
   target_dtype = tf.float32
   shape_per_tensor = (1, 512)  # test for mobilenet_v1
   tensor_size = np.prod(shape_per_tensor)
-  with open('../intermediate-features/intermediates', 'rb') as f:
-    raw_bytes = f.read()
-  bytes_size = tensor_size * target_dtype.size
+
+  features = glob.glob("intermediate-features/*-feature")
+
   tensors = []
-  for i in range(0, len(raw_bytes), bytes_size):
-    raw_byte = raw_bytes[i:i+bytes_size]
-    tensor = tf.io.decode_raw(raw_byte, target_dtype)
-    tensor = tf.reshape(tensor, shape_per_tensor)
-    tensors.append(tensor)
+  for feature_path in features:
+    with open(feature_path, 'rb') as f:
+      raw_bytes = f.read()
+    bytes_size = tensor_size * target_dtype.size
+
+    for i in range(0, len(raw_bytes), bytes_size):
+      raw_byte = raw_bytes[i:i+bytes_size]
+      tensor = tf.io.decode_raw(raw_byte, target_dtype)
+      tensor = tf.reshape(tensor, shape_per_tensor)
+      tensors.append(tensor)
   tensor = tf.stack(tensors, axis=0)
   tensor = tf.reshape(tensor, (len(tensors), 512))
 
@@ -82,6 +78,10 @@ def synthetic_dataset():
   return dataset
 
 def main(args):
+  _, test_dataset, _, _, _, num_test, _ = \
+    create_data_pipeline(FLAGS.data_dir, FLAGS.batch_size,
+                         FLAGS.image_size)
+
   num_classes = FLAGS.num_classes
   img_size = (None, FLAGS.image_size, FLAGS.image_size, 3)
   model = InceptionResNetV1(num_classes=num_classes,
@@ -125,50 +125,56 @@ def main(args):
     optimizer.apply_gradients(zip(grads, classifier.trainable_variables))
     return loss, logits
 
+  @tf.function(input_signature=(tf.TensorSpec(img_size, tf.float32),
+                                tf.TensorSpec((None,), tf.int32)))
+  def eval_step(images, labels):
+    logits, _ = model(images, training=False)
+    loss = tf.keras.losses.sparse_categorical_crossentropy(
+        labels, logits, False)
+    loss = tf.reduce_mean(loss)
+    return loss, logits
+
+  def eval():
+    accuracy_metric.reset_states()
+    for images, labels in enumerate(test_dataset):
+      loss, logits = eval_step(images, labels)
+      loss_metric.update_state(loss)
+      accuracy_metric.update_state(labels, logits)
+      break
+    return accuracy_metric.result().numpy() * 100
+
   model_dir = FLAGS.model_dir
   if not os.path.exists(model_dir):
     os.makedirs(model_dir)
 
-  global_step = 0
   train_dataset = iter(synthetic_dataset())
   for epoch in range(FLAGS.num_epochs):
+    print("epoch", epoch)
     loss_metric.reset_states()
     accuracy_metric.reset_states()
-    num_images = 0
-    start = time.time()
-    for epoch_step, (images, labels) in enumerate(train_dataset):
+    for images, labels in train_dataset:
       train_loss, train_logits = train_step(images, labels)
 
       loss_metric.update_state(train_loss)
       accuracy_metric.update_state(labels, train_logits)
-      global_step += 1
-      num_images += images.shape[0]
 
-      if global_step % FLAGS.log_frequency == 0:
-        end = time.time()
-        throughput = num_images / (end - start)
-        logging.debug('Step %d (%f %% of epoch %d): loss = %f, '
-                      'accuracy = %f, learning rate = %.4f '
-                      'throughput = %.2f',
-                      global_step, (epoch_step / step_per_epoch * 100),
-                      epoch + 1,
-                      loss_metric.result().numpy(),
-                      accuracy_metric.result().numpy() * 100,
-                      optimizer._decayed_lr(tf.float32),  # pylint: disable=protected-access
-                      throughput)
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
 
-      if FLAGS.save_frequency > 0 and global_step % FLAGS.save_frequency == 0:
-        model.save_weights(os.path.join(model_dir, 'facenet_ckpt'))
+  model_path = os.getenv("MODEL_PATH")
+  output_path = os.path.join(C.MODEL_PATH, model_path)
+  with tf.io.gfile.GFile(output_path, 'wb') as f:
+    f.write(tflite_model)
+  # eval and finish
+  acc = eval()
+  print(acc)
 
-      if FLAGS.save_frequency > 0 and global_step % 1000 == 0:
-        converter = tf.lite.TFLiteConverter.from_keras_model(model)
-        tflite_model = converter.convert()
-        with tf.io.gfile.GFile('./tflite-models/facenet_new.tflite', 'wb') as f:
-          f.write(tflite_model)
+  trial_id = int(os.getenv("TRIAL_ID", 0))
 
-      if global_step % FLAGS.log_frequency == 0:
-        num_images = 0
-        start = time.time()
+  requests.post("http://127.0.0.1:8000/model/train", json=dict(acc=acc, trial_id=trial_id))
+
+
+
 
 if __name__ == "__main__":
   app.run(main)

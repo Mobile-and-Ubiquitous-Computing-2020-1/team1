@@ -1,9 +1,7 @@
 """
 preprocess dataset by using MTCNN
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import argparse
 import glob
@@ -13,6 +11,7 @@ import cv2
 
 from mtcnn import MTCNN
 from utils.log import fedex_logger as logger
+
 
 def _make_dataset(input_dir, output_dir, image_size, margin, split='train'):
   """process each image and save result image

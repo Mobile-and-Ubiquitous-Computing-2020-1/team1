@@ -3,14 +3,12 @@ convert prepared resnet model into tflite model
 run this python script in server root
 """
 
-import os
 import argparse
+import os
 
 import tensorflow as tf
-
+from models import mobilenet, resnet50
 from tensorflow import lite as tf_lite
-
-from models import resnet50, mobilenet
 
 TFLITE_MODEL_DIR = '../client/app/src/main/assets'
 

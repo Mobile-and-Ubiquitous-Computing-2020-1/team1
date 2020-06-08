@@ -1,33 +1,21 @@
 """
 just throughput test
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import getpass
 import math
 import os
 import time
 
-from absl import app
-from absl import flags
-
 import numpy as np
+from absl import app, flags
 
 import tensorflow as tf
+from models import (InceptionResNetV1, ThawedModel1, ThawedModel2,
+                    ThawedModel3, ThawedModel4, ThawedModel5, ThawedModel6)
 from tensorflow.python import keras
-from tensorflow.python.keras import layers
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
-
-from models import InceptionResNetV1
-from models import ThawedModel1
-from models import ThawedModel2
-from models import ThawedModel3
-from models import ThawedModel4
-from models import ThawedModel5
-from models import ThawedModel6
+from tensorflow.python.keras import initializers, layers, regularizers
 
 FLAGS = flags.FLAGS
 

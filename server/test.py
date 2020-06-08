@@ -1,3 +1,5 @@
+"""Test code for server."""
+
 import pytest
 
 from fastapi.testclient import TestClient
@@ -25,12 +27,12 @@ def test_push(client: TestClient):
     'Content-Disposition': f'filename={filename}',
   }
 
-  response = client.post("/push/", data=data, headers=headers)
+  response = client.post("/push", data=data, headers=headers)
   assert response.status_code == 200
   assert response.json() == dict(success=True)
 
 
-def test_pull(client: TestClient):
+# def test_pull(client: TestClient):
 
 
-  response = client.get("/pull/")
+#   response = client.get("/pull/")

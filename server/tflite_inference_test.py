@@ -3,13 +3,11 @@ import os
 from typing import Tuple
 
 import numpy as np
-import tensorflow as tf
-
-from tensorflow import lite as tf_lite
-
 from PIL import Image
 
+import tensorflow as tf
 from models import resnet50
+from tensorflow import lite as tf_lite
 
 CHECKPOINT_DIR = './checkpoints/resnet50'
 TF_LITE_MODEL = './tflite-models/resnet50.tflite'
