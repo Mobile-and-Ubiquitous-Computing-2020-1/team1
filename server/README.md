@@ -11,7 +11,25 @@
     - `utils/download_dataset.py` for downloads whole dataset (about 40GB)
     - `preprocess_image.py` for preprocess datasets (use `_make_dataset` instead of `make_dataset_cached`)
 
-## TFLite Convert Example (ResNet50)
+
+
+## Install server
+
+```bash
+pip install -r requirements.txt
+```
+
+## Run server
+
+Launch server on http://0.0.0.0:8000
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 
+```
+
+## Examples
+
+### TFLite Convert Example (ResNet50)
 
 1. download checkpoints
    `./scripts/prepare_resnet50.sh`
@@ -19,7 +37,7 @@
    `python convert_tflite.py`
 3. output model `resnet50.tflite` and `mobilenet_v1.tflite` will be saved at `$PROJECT_ROOT/client/app/src/main/assets`
 
-## Read intermediates Tensor Example
+### Read intermediates Tensor Example
 
 1. At the application click `inference` button
 2. run `./scripts/get_intermediates.sh`
