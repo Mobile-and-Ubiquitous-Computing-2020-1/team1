@@ -3,32 +3,22 @@ additional training module for facenet
 (kind of transfer learning)
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import getpass
 import math
 import os
-import random
-
-from absl import app
-from absl import flags
+import time
 
 import numpy as np
-import torch
-import time
-import tensorflow as tf
-from tensorflow.python import keras
-from tensorflow.python.data import Dataset
-from tensorflow.python.keras import layers
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
+from absl import app, flags
 
+import tensorflow as tf
 from models import InceptionResNetV1
-from models import CenterLoss
+from tensorflow.python.data import Dataset
 from utils.log import fedex_logger as logging
-from utils.data_pipeline import create_data_pipeline
+
+import const as C
 
 FLAGS = flags.FLAGS
 
@@ -163,7 +153,9 @@ def main(args):
       if FLAGS.save_frequency > 0 and global_step % 1000 == 0:
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
-        with tf.io.gfile.GFile('./tflite-models/facenet_new.tflite', 'wb') as f:
+
+        output_path = os.path.join(C.MODEL_PATH, "facenet.tflite")
+        with tf.io.gfile.GFile(output_path, 'wb') as f:
           f.write(tflite_model)
 
       if global_step % FLAGS.log_frequency == 0:

@@ -2,16 +2,17 @@
 
 import asyncio
 import os
-
-import aiofiles
 import sys
 
+import aiofiles
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from starlette.responses import PlainTextResponse
-from fastapi import FastAPI, Header, Request, HTTPException
-from fastapi.responses import StreamingResponse, FileResponse
+from pydantic.dataclasses import dataclass
 
 
 import const as C
+from trainer import Trainer, get_trainer, register
 
 
 def app_generator() -> FastAPI:
@@ -22,6 +23,7 @@ def app_generator() -> FastAPI:
     docs_url="/docs",
     redoc_url="/redoc",
   )
+  register(app)
 
   @app.get(C.PING_URL, response_class=PlainTextResponse)
   def _pong() -> str:
@@ -29,35 +31,54 @@ def app_generator() -> FastAPI:
 
 
   @app.post(C.PUSH_URL)
-  async def _push_intermediate_features(request: Request, *, content_type: str = Header(None), content_disposition: str = Header(None)):
+  async def _push_intermediate_features(
+    request: Request,
+    *,
+    content_type: str = Header(None),
+    content_disposition: str = Header(None),
+    trainer: Trainer = Depends(get_trainer)
+  ):
     if content_type != "application/octet-stream":
       raise HTTPException(status_code=400, detail="wrong header, should be 'application/octet-stream'")
 
-    dirname = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            '../intermediate-features')
     filename = content_disposition.split("filename=")[1].replace('"', '')
-    fullname = os.path.join(dirname, filename)
-
-    os.makedirs(dirname, exist_ok=True)
+    fullname = os.path.join(C.FEATURE_PATH, filename)
 
     async with aiofiles.open(fullname, 'wb') as output:
-      await output.write(await request.body())
+      await output.write(await request.body())  # todo change to streaming
 
-    asyncio.create_task(_background_train())
+    trainer.add_intermediate_feature(filename)
     return dict(success=True)
 
 
   @app.get(C.PULL_URL)
-  async def _pull_model():
-    TFLITE_MODEL_DIR = 'tflite-models'
-    filename = 'facenet_new.tflite'
-    fullname = os.path.join(TFLITE_MODEL_DIR, filename)
+  async def _pull_model(
+    trainer: Trainer = Depends(get_trainer)
+  ):
+    filename = trainer.get_best_model_file()
+    fullname = os.path.join(C.MODEL_PATH, filename)
     return FileResponse(fullname, media_type="application/octet-stream")
+
+
+  @app.get(C.INFO_URL)
+  async def _info_model(
+    trainer: Trainer = Depends(get_trainer)
+  ):
+    model_info = trainer.get_best_model_info()
+    return model_info
+
+  @app.post(C.UPDATE_URL)
+  async def _update_model_perf(
+    trainer: Trainer = Depends(get_trainer)
+  ):
+    trainer.update_model()
 
   return app
 
-app = app_generator()
 
-async def _background_train():
-  command = "../bg.py"
-  await asyncio.create_subprocess_exec(sys.executable, command)
+@dataclass
+class A:
+  pass
+
+
+app = app_generator()

@@ -2,30 +2,19 @@
 additional training module for facenet
 (kind of transfer learning)
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import getpass
 import math
 import os
-
-from absl import app
-from absl import flags
-
-import numpy as np
-import torch
 import time
-import tensorflow as tf
-from tensorflow.python import keras
-from tensorflow.python.keras import layers
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
 
+from absl import app, flags
+
+import tensorflow as tf
 from models import InceptionResNetV1
-from models import CenterLoss
+from tensorflow.python.keras import initializers, layers, regularizers
 from utils.log import fedex_logger as logging
-from utils.data_pipeline import create_data_pipeline
 
 FLAGS = flags.FLAGS
 
