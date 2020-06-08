@@ -50,7 +50,9 @@ def synthetic_dataset():
   target_dtype = tf.float32
   shape_per_tensor = (1, 512)  # test for mobilenet_v1
   tensor_size = np.prod(shape_per_tensor)
-  with open('../intermediate-features/intermediates', 'rb') as f:
+
+  path = os.path.join(C.FEATURE_PATH, "intermediates")
+  with open(path, 'rb') as f:
     raw_bytes = f.read()
   bytes_size = tensor_size * target_dtype.size
   tensors = []

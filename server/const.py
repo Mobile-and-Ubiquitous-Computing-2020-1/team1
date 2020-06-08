@@ -19,6 +19,7 @@ FEATURE_PATH = "intermediate-features"
 os.makedirs(FEATURE_PATH, exist_ok=True)
 
 MODEL_PATH = "tflite-models"
+os.makedirs(MODEL_PATH, exist_ok=True)
 
 # command
 BACKGROUND_JOB = "bg.py"
