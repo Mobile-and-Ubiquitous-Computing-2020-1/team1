@@ -9,7 +9,6 @@ import getpass
 import math
 import os
 import requests
-import time
 
 import numpy as np
 from absl import app, flags
@@ -148,19 +147,15 @@ def main(args):
   global_step = 0
   train_dataset = iter(synthetic_dataset())
   for epoch in range(FLAGS.num_epochs):
+    print("epoch", epoch)
     loss_metric.reset_states()
     accuracy_metric.reset_states()
-    num_images = 0
     for epoch_step, (images, labels) in enumerate(train_dataset):
       train_loss, train_logits = train_step(images, labels)
 
       loss_metric.update_state(train_loss)
       accuracy_metric.update_state(labels, train_logits)
       global_step += 1
-      num_images += images.shape[0]
-
-      if FLAGS.save_frequency > 0 and global_step % FLAGS.save_frequency == 0:
-        model.save_weights(os.path.join(model_dir, 'facenet_ckpt'))
 
       if FLAGS.save_frequency > 0 and global_step % 1000 == 0:
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
@@ -173,7 +168,9 @@ def main(args):
   acc = eval()
   print(acc)
 
-  requests.post("http://127.0.0.1:8000/model/train", json=dict(acc=acc))
+  trial_id = int(os.getenv("TRIAL_ID", 0))
+
+  requests.post("http://127.0.0.1:8000/model/train", json=dict(acc=acc, trial_id=trial_id))
 
 
 

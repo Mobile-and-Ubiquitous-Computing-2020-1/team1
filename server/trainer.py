@@ -8,7 +8,7 @@ import sys
 import logging
 import os
 
-from typing import Optional, List, Set, Tuple
+from typing import Optional, List, Set, Tuple, Dict
 
 import aiofiles
 from pydantic.dataclasses import dataclass
@@ -95,7 +95,13 @@ class Trainer:
     """Return information about the best model trained so far."""
     return self.best_model[0]
 
+  def update_model(self):
+    pass
+
   async def _launch_task(self, gpu_idx: int):
+    trial = Trial(self._trial_idx, len(self.intermediate_features), gpu_idx)
+    self._trial_idx += 1
+
     env = dict(CUDA_VISIBLE_DEVICES=str(gpu_idx), CALLBACK_URL="127.0.0.1:8000")
     command = C.BACKGROUND_JOB
     proc = await asyncio.create_subprocess_exec(

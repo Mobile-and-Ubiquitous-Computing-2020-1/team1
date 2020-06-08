@@ -17,6 +17,7 @@ from trainer import Trainer, get_trainer, register
 
 @dataclass
 class Accuracy:
+  trial_id: int
   acc: float
 
 
@@ -77,7 +78,13 @@ def app_generator() -> FastAPI:
   ):
     """Update a running model performance."""
     print('update trial')
-    # trainer.update_model()
+    trainer.update_model(acc)
+
+  @app.get(C.LIST_URL)
+  async def _list_models(
+    trainer: Trainer = Depends(get_trainer)
+  ):
+    pass
 
   return app
 
