@@ -133,38 +133,35 @@ def main(args):
 
   def eval():
     accuracy_metric.reset_states()
-    step_per_epoch = math.ceil(num_test / FLAGS.batch_size)
-    for i, (images, labels) in enumerate(test_dataset):
+    for images, labels in enumerate(test_dataset):
       loss, logits = eval_step(images, labels)
       loss_metric.update_state(loss)
       accuracy_metric.update_state(labels, logits)
+      break
     return accuracy_metric.result().numpy() * 100
 
   model_dir = FLAGS.model_dir
   if not os.path.exists(model_dir):
     os.makedirs(model_dir)
 
-  global_step = 0
   train_dataset = iter(synthetic_dataset())
   for epoch in range(FLAGS.num_epochs):
     print("epoch", epoch)
     loss_metric.reset_states()
     accuracy_metric.reset_states()
-    for epoch_step, (images, labels) in enumerate(train_dataset):
+    for images, labels in train_dataset:
       train_loss, train_logits = train_step(images, labels)
 
       loss_metric.update_state(train_loss)
       accuracy_metric.update_state(labels, train_logits)
-      global_step += 1
 
-      if FLAGS.save_frequency > 0 and global_step % 1000 == 0:
-        converter = tf.lite.TFLiteConverter.from_keras_model(model)
-        tflite_model = converter.convert()
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
 
-        model_path = os.getenv("MODEL_PATH")
-        output_path = os.path.join(C.MODEL_PATH, model_path)
-        with tf.io.gfile.GFile(output_path, 'wb') as f:
-          f.write(tflite_model)
+  model_path = os.getenv("MODEL_PATH")
+  output_path = os.path.join(C.MODEL_PATH, model_path)
+  with tf.io.gfile.GFile(output_path, 'wb') as f:
+    f.write(tflite_model)
   # eval and finish
   acc = eval()
   print(acc)
