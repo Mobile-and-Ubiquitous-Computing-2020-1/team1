@@ -1,4 +1,4 @@
-requests==2.23.0
+requests==2.31.0
 tensorboard==2.2.2
 tensorflow==2.5.0
 tensorflow-estimator==2.2.0
